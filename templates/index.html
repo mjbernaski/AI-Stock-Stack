@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Technology Market Cap Layers</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .last-update {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .index-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 16px;
+            margin-bottom: 40px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+
+        .index-title {
+            font-size: 16px;
+            font-weight: 500;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+
+        .index-main {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+
+        .index-change {
+            font-size: 48px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .index-arrow {
+            font-size: 40px;
+        }
+
+        .index-arrow.up {
+            color: #4ade80;
+        }
+
+        .index-arrow.down {
+            color: #f87171;
+        }
+
+        .index-arrow.neutral {
+            color: #d1d5db;
+        }
+
+        .index-stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .index-stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .index-stat-label {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-bottom: 4px;
+        }
+
+        .index-stat-value {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 40px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .chart-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .chart-canvas {
+            max-height: 400px;
+        }
+
+        .layer {
+            margin-bottom: 40px;
+            padding: 30px;
+            border-radius: 12px;
+            border: 2px solid;
+        }
+
+        .layer h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 20px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .layer-index {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.7);
+        }
+
+        .layer-index.up {
+            color: #2e7d32;
+        }
+
+        .layer-index.down {
+            color: #c62828;
+        }
+
+        .layer-index.neutral {
+            color: #757575;
+        }
+
+        .layer-index-arrow {
+            font-size: 14px;
+        }
+
+        .layer1 {
+            background: #e3f2fd;
+            border-color: #90caf9;
+        }
+
+        .layer2 {
+            background: #fff9c4;
+            border-color: #fff176;
+        }
+
+        .layer3 {
+            background: #e0f2f1;
+            border-color: #80cbc4;
+        }
+
+        .layer4 {
+            background: #f3e5f5;
+            border-color: #ce93d8;
+        }
+
+        .stock-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .stock-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stock-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .stock-ticker {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1976d2;
+            margin-bottom: 4px;
+        }
+
+        .stock-name {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+
+        .stock-price {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .stock-market-cap {
+            font-size: 16px;
+            color: #333;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .stock-change {
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            font-weight: 500;
+            gap: 4px;
+        }
+
+        .stock-change.up {
+            color: #2e7d32;
+        }
+
+        .stock-change.down {
+            color: #c62828;
+        }
+
+        .stock-change.neutral {
+            color: #757575;
+        }
+
+        .arrow {
+            font-size: 18px;
+            line-height: 1;
+        }
+
+        .arrow.up::before {
+            content: '▲';
+        }
+
+        .arrow.down::before {
+            content: '▼';
+        }
+
+        .arrow.neutral::before {
+            content: '─';
+        }
+
+        .layer-arrow {
+            text-align: center;
+            font-size: 32px;
+            color: #999;
+            margin: 20px 0;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 18px;
+            color: #666;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .updating {
+            opacity: 0.6;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .pulse {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Technology Market Cap Layers</h1>
+        <div class="last-update" id="lastUpdate">Loading...</div>
+
+        <div id="indexCard" class="index-card" style="display: none;">
+            <div class="index-title">Tech Stack Index - Market Cap Weighted</div>
+            <div class="index-main">
+                <div class="index-change">
+                    <span id="indexArrow" class="index-arrow">─</span>
+                    <span id="indexChange">0.00%</span>
+                </div>
+            </div>
+            <div class="index-stats">
+                <div class="index-stat">
+                    <div class="index-stat-label">Total Market Cap</div>
+                    <div class="index-stat-value" id="indexMarketCap">$0</div>
+                </div>
+                <div class="index-stat">
+                    <div class="index-stat-label">Companies</div>
+                    <div class="index-stat-value" id="indexStockCount">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="chartContainer" class="chart-container" style="display: none;">
+            <div class="chart-title">Index Performance Over Time</div>
+            <canvas id="indexChart" class="chart-canvas"></canvas>
+        </div>
+
+        <div id="pieChartContainer" class="chart-container" style="display: none;">
+            <div class="chart-title">Market Cap Distribution by Layer</div>
+            <canvas id="pieChart" class="chart-canvas"></canvas>
+        </div>
+
+        <div id="content">
+            <div class="loading pulse">Loading stock data...</div>
+        </div>
+    </div>
+
+    <script>
+        let updateInterval;
+        let indexChart = null;
+        let pieChart = null;
+        let currentIndexData = null;
+
+        async function fetchHistory() {
+            try {
+                const response = await fetch('/api/history');
+                const data = await response.json();
+                renderChart(data);
+            } catch (error) {
+                console.error('Error fetching history:', error);
+            }
+        }
+
+        function renderChart(historyData) {
+            if (!historyData || historyData.length === 0) {
+                return;
+            }
+
+            const ctx = document.getElementById('indexChart').getContext('2d');
+
+            const labels = historyData.map(entry => {
+                const date = new Date(entry.timestamp);
+                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            });
+
+            const indexValues = historyData.map(entry => entry.index.changePercent || 0);
+
+            if (indexChart) {
+                indexChart.destroy();
+            }
+
+            indexChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Tech Stack Index (%)',
+                        data: indexValues,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 3,
+                        pointHoverRadius: 6,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed.y;
+                                    return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toFixed(2) + '%';
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+
+            document.getElementById('chartContainer').style.display = 'block';
+        }
+
+        function renderPieChart(indexData) {
+            if (!indexData || !indexData.layers) return;
+
+            const ctx = document.getElementById('pieChart').getContext('2d');
+
+            const layerNames = {
+                'layer1': 'Layer 1: Foundation',
+                'layer2': 'Layer 2: Compute & Logic',
+                'layer3': 'Layer 3: Cloud & Data',
+                'layer4': 'Layer 4: Interface & App'
+            };
+
+            const labels = [];
+            const data = [];
+            const colors = ['#90caf9', '#fff176', '#80cbc4', '#ce93d8'];
+
+            ['layer1', 'layer2', 'layer3', 'layer4'].forEach((layerKey, index) => {
+                if (indexData.layers[layerKey]) {
+                    labels.push(layerNames[layerKey]);
+                    data.push(indexData.layers[layerKey].totalMarketCap / 1e12);
+                }
+            });
+
+            if (pieChart) {
+                pieChart.destroy();
+            }
+
+            pieChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percent = ((value / total) * 100).toFixed(1);
+                                    return `${label}: $${value.toFixed(1)}T (${percent}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            document.getElementById('pieChartContainer').style.display = 'block';
+        }
+
+        async function fetchStocks() {
+            try {
+                const response = await fetch('/api/stocks');
+                const data = await response.json();
+                currentIndexData = data.index;
+                renderIndex(data.index);
+                renderPieChart(data.index);
+                renderStocks(data.stocks);
+                updateLastUpdateTime(data.index.lastUpdated);
+                fetchHistory();
+            } catch (error) {
+                console.error('Error fetching stocks:', error);
+                document.getElementById('content').innerHTML = `
+                    <div class="error">Failed to load stock data. Retrying...</div>
+                `;
+            }
+        }
+
+        function renderIndex(indexData) {
+            if (!indexData) return;
+
+            const indexCard = document.getElementById('indexCard');
+            const indexArrow = document.getElementById('indexArrow');
+            const indexChange = document.getElementById('indexChange');
+            const indexMarketCap = document.getElementById('indexMarketCap');
+            const indexStockCount = document.getElementById('indexStockCount');
+
+            const changePercent = indexData.changePercent || 0;
+            const sign = changePercent > 0 ? '+' : '';
+
+            indexArrow.className = `index-arrow ${indexData.direction}`;
+            if (indexData.direction === 'up') {
+                indexArrow.textContent = '▲';
+            } else if (indexData.direction === 'down') {
+                indexArrow.textContent = '▼';
+            } else {
+                indexArrow.textContent = '─';
+            }
+
+            indexChange.textContent = `${sign}${changePercent.toFixed(2)}%`;
+            indexMarketCap.textContent = indexData.totalMarketCapFormatted || 'N/A';
+            indexStockCount.textContent = indexData.stockCount || 0;
+
+            indexCard.style.display = 'block';
+        }
+
+        function renderStocks(data) {
+            const content = document.getElementById('content');
+            const layers = [
+                { key: 'layer4', title: 'Layer 4: Interface & App', class: 'layer4' },
+                { key: 'layer3', title: 'Layer 3: Cloud & Data', class: 'layer3' },
+                { key: 'layer2', title: 'Layer 2: Compute & Logic', class: 'layer2' },
+                { key: 'layer1', title: 'Layer 1: Foundation', class: 'layer1' }
+            ];
+
+            let html = '';
+
+            layers.forEach((layer, index) => {
+                const stocks = data[layer.key] || [];
+
+                let layerIndexHtml = '';
+                if (currentIndexData && currentIndexData.layers && currentIndexData.layers[layer.key]) {
+                    const layerMetrics = currentIndexData.layers[layer.key];
+                    const changePercent = layerMetrics.changePercent || 0;
+                    const sign = changePercent > 0 ? '+' : '';
+                    const arrow = changePercent > 0 ? '▲' : changePercent < 0 ? '▼' : '─';
+
+                    layerIndexHtml = `
+                        <span class="layer-index ${layerMetrics.direction}">
+                            <span class="layer-index-arrow">${arrow}</span>
+                            ${sign}${changePercent.toFixed(2)}%
+                        </span>
+                    `;
+                }
+
+                html += `
+                    <div class="layer ${layer.class}">
+                        <h2>
+                            ${layer.title}
+                            ${layerIndexHtml}
+                        </h2>
+                        <div class="stock-grid">
+                            ${stocks.map(stock => renderStockCard(stock)).join('')}
+                        </div>
+                    </div>
+                `;
+
+                if (index < layers.length - 1) {
+                    html += '<div class="layer-arrow">↓</div>';
+                }
+            });
+
+            content.innerHTML = html;
+        }
+
+        function renderStockCard(stock) {
+            if (stock.error) {
+                return `
+                    <div class="stock-card">
+                        <div class="stock-ticker">${stock.ticker}</div>
+                        <div class="stock-name">${stock.name}</div>
+                        <div class="stock-price">Error loading</div>
+                    </div>
+                `;
+            }
+
+            const priceDisplay = stock.price ? `$${stock.price.toFixed(2)}` : 'N/A';
+            const changePercent = stock.priceChangePercent ? stock.priceChangePercent.toFixed(2) : '0.00';
+            const changeSign = stock.priceChangePercent > 0 ? '+' : '';
+
+            return `
+                <div class="stock-card">
+                    <div class="stock-ticker">${stock.ticker}</div>
+                    <div class="stock-name">${stock.name}</div>
+                    <div class="stock-price">${priceDisplay}</div>
+                    <div class="stock-market-cap">${stock.marketCapFormatted}</div>
+                    <div class="stock-change ${stock.direction}">
+                        <span class="arrow ${stock.direction}"></span>
+                        <span>${changeSign}${changePercent}%</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateLastUpdateTime(timestamp) {
+            if (timestamp) {
+                const date = new Date(timestamp);
+                const timeString = date.toLocaleTimeString();
+                document.getElementById('lastUpdate').textContent = `Last updated: ${timeString}`;
+            }
+        }
+
+        async function initAutoUpdate() {
+            const response = await fetch('/api/config');
+            const config = await response.json();
+            const intervalMs = config.updateInterval * 60 * 1000;
+
+            setInterval(() => {
+                fetchStocks();
+            }, intervalMs);
+        }
+
+        fetchStocks();
+        initAutoUpdate();
+    </script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+{
+  "server": {
+    "host": "localhost",
+    "port": 1111
+  },
+  "scheduler": {
+    "update_interval_minutes": 15
+  },
+  "stocks": {
+    "layer1": [
+      {"ticker": "TSM", "name": "TSMC"},
+      {"ticker": "MU", "name": "Micron"},
+      {"ticker": "AMAT", "name": "Applied Materials"},
+      {"ticker": "LRCX", "name": "Lam Research"}
+    ],
+    "layer2": [
+      {"ticker": "NVDA", "name": "Nvidia"},
+      {"ticker": "AVGO", "name": "Broadcom"},
+      {"ticker": "AMD", "name": "AMD"},
+      {"ticker": "QCOM", "name": "Qualcomm"},
+      {"ticker": "DELL", "name": "Dell"},
+      {"ticker": "VRT", "name": "Vertiv"}
+    ],
+    "layer3": [
+      {"ticker": "MSFT", "name": "Microsoft"},
+      {"ticker": "GOOGL", "name": "Alphabet"},
+      {"ticker": "AMZN", "name": "Amazon"},
+      {"ticker": "ORCL", "name": "Oracle"}
+    ],
+    "layer4": [
+      {"ticker": "AAPL", "name": "Apple"},
+      {"ticker": "META", "name": "Meta"},
+      {"ticker": "TSLA", "name": "Tesla"},
+      {"ticker": "TCEHY", "name": "Tencent"},
+      {"ticker": "PLTR", "name": "Palantir"},
+      {"ticker": "CRM", "name": "Salesforce"},
+      {"ticker": "ADBE", "name": "Adobe"},
+      {"ticker": "NOW", "name": "ServiceNow"}
+    ]
+  }
+}
