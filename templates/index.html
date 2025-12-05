@@ -136,6 +136,27 @@
             padding: 30px;
             border-radius: 12px;
             border: 2px solid;
+            position: relative;
+        }
+
+        .layer-total {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 8px 16px;
+            border-radius: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .layer-total-label {
+            font-size: 12px;
+            font-weight: 500;
+            opacity: 0.7;
+            margin-right: 4px;
         }
 
         .layer h2 {
@@ -208,11 +229,42 @@
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+            position: relative;
         }
 
         .stock-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .stock-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .stock-info {
+            flex: 1;
+        }
+
+        .stock-price-change {
+            text-align: right;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .stock-price-change.up {
+            color: #2e7d32;
+        }
+
+        .stock-price-change.down {
+            color: #c62828;
+        }
+
+        .stock-price-change.neutral {
+            color: #757575;
         }
 
         .stock-ticker {
@@ -245,9 +297,9 @@
         .stock-change {
             display: flex;
             align-items: center;
-            font-size: 14px;
-            font-weight: 500;
-            gap: 4px;
+            font-size: 22px;
+            font-weight: 600;
+            gap: 6px;
         }
 
         .stock-change.up {
@@ -571,6 +623,8 @@
                 const stocks = data[layer.key] || [];
 
                 let layerIndexHtml = '';
+                let layerTotalHtml = '';
+
                 if (currentIndexData && currentIndexData.layers && currentIndexData.layers[layer.key]) {
                     const layerMetrics = currentIndexData.layers[layer.key];
                     const changePercent = layerMetrics.changePercent || 0;
@@ -583,6 +637,13 @@
                             ${sign}${changePercent.toFixed(2)}%
                         </span>
                     `;
+
+                    layerTotalHtml = `
+                        <div class="layer-total">
+                            <span class="layer-total-label">Total:</span>
+                            ${layerMetrics.totalMarketCapFormatted}
+                        </div>
+                    `;
                 }
 
                 html += `
@@ -594,6 +655,7 @@
                         <div class="stock-grid">
                             ${stocks.map(stock => renderStockCard(stock)).join('')}
                         </div>
+                        ${layerTotalHtml}
                     </div>
                 `;
 
@@ -619,11 +681,21 @@
             const priceDisplay = stock.price ? `$${stock.price.toFixed(2)}` : 'N/A';
             const changePercent = stock.priceChangePercent ? stock.priceChangePercent.toFixed(2) : '0.00';
             const changeSign = stock.priceChangePercent > 0 ? '+' : '';
+            const priceChange = stock.priceChange ? stock.priceChange.toFixed(2) : '0.00';
+            const priceChangeSign = stock.priceChange > 0 ? '+$' : stock.priceChange < 0 ? '-$' : '$';
+            const priceChangeAbs = Math.abs(stock.priceChange || 0).toFixed(2);
 
             return `
                 <div class="stock-card">
-                    <div class="stock-ticker">${stock.ticker}</div>
-                    <div class="stock-name">${stock.name}</div>
+                    <div class="stock-header">
+                        <div class="stock-info">
+                            <div class="stock-ticker">${stock.ticker}</div>
+                            <div class="stock-name">${stock.name}</div>
+                        </div>
+                        <div class="stock-price-change ${stock.direction}">
+                            ${priceChangeSign}${priceChangeAbs}
+                        </div>
+                    </div>
                     <div class="stock-price">${priceDisplay}</div>
                     <div class="stock-market-cap">${stock.marketCapFormatted}</div>
                     <div class="stock-change ${stock.direction}">
