@@ -398,6 +398,11 @@
             <canvas id="indexChart" class="chart-canvas"></canvas>
         </div>
 
+        <div id="layerRatioChartContainer" class="chart-container" style="display: none;">
+            <div class="chart-title">Layer Valuation Ratios - 12 Month History (Layer 1 = 1.0)</div>
+            <canvas id="layerRatioChart" class="chart-canvas"></canvas>
+        </div>
+
         <div id="content">
             <div class="loading pulse">Loading stock data...</div>
         </div>
@@ -412,6 +417,7 @@
         let updateInterval;
         let indexChart = null;
         let pieChart = null;
+        let layerRatioChart = null;
         let currentIndexData = null;
 
         async function fetchHistory() {
@@ -562,6 +568,133 @@
             document.getElementById('pieChartContainer').style.display = 'block';
         }
 
+        async function fetchLayerRatios() {
+            try {
+                const response = await fetch('/api/layer-ratios');
+                const data = await response.json();
+                renderLayerRatioChart(data);
+            } catch (error) {
+                console.error('Error fetching layer ratios:', error);
+            }
+        }
+
+        function renderLayerRatioChart(ratioData) {
+            if (!ratioData || ratioData.length === 0) {
+                return;
+            }
+
+            const ctx = document.getElementById('layerRatioChart').getContext('2d');
+
+            const labels = ratioData.map(entry => {
+                const date = new Date(entry.date);
+                return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+            });
+
+            const layer1Data = ratioData.map(entry => entry.layer1);
+            const layer2Data = ratioData.map(entry => entry.layer2);
+            const layer3Data = ratioData.map(entry => entry.layer3);
+            const layer4Data = ratioData.map(entry => entry.layer4);
+
+            if (layerRatioChart) {
+                layerRatioChart.destroy();
+            }
+
+            layerRatioChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Layer 1: Foundation (Baseline)',
+                            data: layer1Data,
+                            borderColor: '#2196f3',
+                            backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                            tension: 0.4,
+                            fill: false,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            borderWidth: 2,
+                            borderDash: [5, 5]
+                        },
+                        {
+                            label: 'Layer 2: Compute & Logic',
+                            data: layer2Data,
+                            borderColor: '#fbc02d',
+                            backgroundColor: 'rgba(251, 192, 45, 0.1)',
+                            tension: 0.4,
+                            fill: false,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'Layer 3: Cloud & Data',
+                            data: layer3Data,
+                            borderColor: '#00897b',
+                            backgroundColor: 'rgba(0, 137, 123, 0.1)',
+                            tension: 0.4,
+                            fill: false,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'Layer 4: Interface & App',
+                            data: layer4Data,
+                            borderColor: '#9c27b0',
+                            backgroundColor: 'rgba(156, 39, 176, 0.1)',
+                            tension: 0.4,
+                            fill: false,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            borderWidth: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed.y;
+                                    return `${context.dataset.label}: ${value.toFixed(2)}x`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toFixed(1) + 'x';
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                maxTicksLimit: 12
+                            }
+                        }
+                    }
+                }
+            });
+
+            document.getElementById('layerRatioChartContainer').style.display = 'block';
+        }
+
         async function fetchStocks() {
             try {
                 const response = await fetch('/api/stocks');
@@ -572,6 +705,7 @@
                 renderStocks(data.stocks);
                 updateLastUpdateTime(data.index.lastUpdated);
                 fetchHistory();
+                fetchLayerRatios();
             } catch (error) {
                 console.error('Error fetching stocks:', error);
                 document.getElementById('content').innerHTML = `

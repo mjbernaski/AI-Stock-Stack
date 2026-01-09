@@ -14,10 +14,12 @@ with open('config.json', 'r') as f:
     config = json.load(f)
 
 HISTORY_FILE = 'historical_data.json'
+LAYER_RATIO_CACHE_FILE = 'layer_ratio_history.json'
 
 stock_data = {}
 index_data = {}
 historical_data = []
+layer_ratio_history = []
 lock = threading.Lock()
 
 def load_historical_data():
@@ -39,6 +41,27 @@ def save_historical_data():
             json.dump(historical_data, f, indent=2)
     except Exception as e:
         print(f"Error saving historical data: {e}")
+
+def load_layer_ratio_cache():
+    if os.path.exists(LAYER_RATIO_CACHE_FILE):
+        try:
+            with open(LAYER_RATIO_CACHE_FILE, 'r') as f:
+                cached_data = json.load(f)
+            print(f"Loaded {len(cached_data)} cached layer ratio data points")
+            return cached_data
+        except Exception as e:
+            print(f"Error loading layer ratio cache: {e}")
+            return []
+    else:
+        return []
+
+def save_layer_ratio_cache():
+    try:
+        with open(LAYER_RATIO_CACHE_FILE, 'w') as f:
+            json.dump(layer_ratio_history, f, indent=2)
+        print(f"Saved {len(layer_ratio_history)} layer ratio data points to cache")
+    except Exception as e:
+        print(f"Error saving layer ratio cache: {e}")
 
 def format_market_cap(value):
     if value >= 1e12:
@@ -196,6 +219,106 @@ def fetch_stock_data():
 
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Stock data updated successfully")
 
+def fetch_historical_layer_ratios():
+    global layer_ratio_history
+    from datetime import timedelta
+
+    cached_data = load_layer_ratio_cache()
+
+    end_date = datetime.now()
+
+    if cached_data and len(cached_data) > 0:
+        last_cached_date_str = cached_data[-1]['date']
+        last_cached_date = datetime.strptime(last_cached_date_str, '%Y-%m-%d')
+        start_date = last_cached_date + timedelta(days=1)
+
+        if start_date.date() >= end_date.date():
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Layer ratio cache is up to date ({len(cached_data)} data points)")
+            with lock:
+                layer_ratio_history = cached_data
+            return cached_data
+
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Updating layer ratios from {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}...")
+    else:
+        start_date = end_date - timedelta(days=365)
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Fetching 12-month historical data for layer ratios...")
+        print(f"  Fetching historical data from {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}...")
+
+    all_tickers = []
+    ticker_to_layer = {}
+
+    for layer_name, stocks in config['stocks'].items():
+        for stock_info in stocks:
+            ticker = stock_info['ticker']
+            all_tickers.append(ticker)
+            ticker_to_layer[ticker] = layer_name
+
+    daily_layer_market_caps = {}
+
+    for ticker in all_tickers:
+        try:
+            stock = yf.Ticker(ticker)
+            hist = stock.history(start=start_date, end=end_date, interval='1d')
+
+            if len(hist) == 0:
+                print(f"  Warning: No historical data for {ticker}")
+                continue
+
+            info = stock.info
+            current_market_cap = info.get('marketCap')
+
+            if not current_market_cap:
+                print(f"  Warning: No market cap data for {ticker}")
+                continue
+
+            current_price = float(hist['Close'].iloc[-1])
+
+            for date_idx in hist.index:
+                date_str = date_idx.strftime('%Y-%m-%d')
+                price_on_date = float(hist.loc[date_idx, 'Close'])
+
+                market_cap_on_date = current_market_cap * (price_on_date / current_price)
+
+                if date_str not in daily_layer_market_caps:
+                    daily_layer_market_caps[date_str] = {
+                        'layer1': 0, 'layer2': 0, 'layer3': 0, 'layer4': 0
+                    }
+
+                layer = ticker_to_layer[ticker]
+                daily_layer_market_caps[date_str][layer] += market_cap_on_date
+
+            print(f"  {ticker}: {len(hist)} days of data")
+
+        except Exception as e:
+            print(f"  Error fetching historical data for {ticker}: {str(e)}")
+
+    new_ratio_data = []
+
+    for date_str in sorted(daily_layer_market_caps.keys()):
+        layer_caps = daily_layer_market_caps[date_str]
+
+        foundation_cap = layer_caps['layer1']
+
+        if foundation_cap > 0:
+            ratios = {
+                'date': date_str,
+                'layer1': 1.0,
+                'layer2': layer_caps['layer2'] / foundation_cap,
+                'layer3': layer_caps['layer3'] / foundation_cap,
+                'layer4': layer_caps['layer4'] / foundation_cap
+            }
+            new_ratio_data.append(ratios)
+
+    combined_data = cached_data + new_ratio_data
+
+    with lock:
+        layer_ratio_history = combined_data
+
+    save_layer_ratio_cache()
+
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Layer ratios updated: {len(combined_data)} total data points ({len(new_ratio_data)} new)")
+    return combined_data
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -219,9 +342,15 @@ def get_history():
     with lock:
         return jsonify(historical_data)
 
+@app.route('/api/layer-ratios')
+def get_layer_ratios():
+    with lock:
+        return jsonify(layer_ratio_history)
+
 if __name__ == '__main__':
     load_historical_data()
     fetch_stock_data()
+    fetch_historical_layer_ratios()
 
     scheduler = BackgroundScheduler()
     scheduler.add_job(
