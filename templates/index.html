@@ -394,7 +394,7 @@
         </div>
 
         <div id="chartContainer" class="chart-container" style="display: none;">
-            <div class="chart-title">Index Performance Over Time</div>
+            <div class="chart-title">Tech Stack Index - Daily Market Cap</div>
             <canvas id="indexChart" class="chart-canvas"></canvas>
         </div>
 
@@ -442,7 +442,7 @@
                 return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
             });
 
-            const indexValues = historyData.map(entry => entry.index.changePercent || 0);
+            const indexValues = historyData.map(entry => (entry.index.totalMarketCap || 0) / 1e12);
 
             if (indexChart) {
                 indexChart.destroy();
@@ -453,7 +453,7 @@
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'Tech Stack Index (%)',
+                        label: 'Tech Stack Index (Total Market Cap)',
                         data: indexValues,
                         borderColor: '#667eea',
                         backgroundColor: 'rgba(102, 126, 234, 0.1)',
@@ -476,20 +476,20 @@
                             callbacks: {
                                 label: function(context) {
                                     const value = context.parsed.y;
-                                    return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+                                    return `$${value.toFixed(2)}T`;
                                 }
                             }
                         }
                     },
                     scales: {
                         y: {
-                            beginAtZero: true,
+                            beginAtZero: false,
                             grid: {
                                 color: 'rgba(0, 0, 0, 0.05)'
                             },
                             ticks: {
                                 callback: function(value) {
-                                    return value.toFixed(2) + '%';
+                                    return '$' + value.toFixed(1) + 'T';
                                 }
                             }
                         },
