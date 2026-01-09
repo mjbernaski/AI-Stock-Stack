@@ -439,7 +439,7 @@
 
             const labels = historyData.map(entry => {
                 const date = new Date(entry.timestamp);
-                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
             });
 
             const indexValues = historyData.map(entry => entry.index.changePercent || 0);
