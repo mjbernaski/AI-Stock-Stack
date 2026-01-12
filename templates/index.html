@@ -399,7 +399,7 @@
         </div>
 
         <div id="layerRatioChartContainer" class="chart-container" style="display: none;">
-            <div class="chart-title">Layer Valuation Ratios - 12 Month History (Layer 1 = 1.0)</div>
+            <div class="chart-title">Layer Market Cap Distribution - 12 Month History</div>
             <canvas id="layerRatioChart" class="chart-canvas"></canvas>
         </div>
 
@@ -437,12 +437,15 @@
 
             const ctx = document.getElementById('indexChart').getContext('2d');
 
-            const labels = historyData.map(entry => {
+            const dailyData = {};
+            historyData.forEach(entry => {
                 const date = new Date(entry.timestamp);
-                return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+                const dateKey = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+                dailyData[dateKey] = (entry.index.totalMarketCap || 0) / 1e12;
             });
 
-            const indexValues = historyData.map(entry => (entry.index.totalMarketCap || 0) / 1e12);
+            const labels = Object.keys(dailyData);
+            const indexValues = Object.values(dailyData);
 
             if (indexChart) {
                 indexChart.destroy();
@@ -590,64 +593,55 @@
                 return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
             });
 
-            const layer1Data = ratioData.map(entry => entry.layer1);
-            const layer2Data = ratioData.map(entry => entry.layer2);
-            const layer3Data = ratioData.map(entry => entry.layer3);
-            const layer4Data = ratioData.map(entry => entry.layer4);
+            const layer1Pct = ratioData.map(entry => {
+                const total = entry.layer1 + entry.layer2 + entry.layer3 + entry.layer4;
+                return (entry.layer1 / total) * 100;
+            });
+            const layer2Pct = ratioData.map(entry => {
+                const total = entry.layer1 + entry.layer2 + entry.layer3 + entry.layer4;
+                return (entry.layer2 / total) * 100;
+            });
+            const layer3Pct = ratioData.map(entry => {
+                const total = entry.layer1 + entry.layer2 + entry.layer3 + entry.layer4;
+                return (entry.layer3 / total) * 100;
+            });
+            const layer4Pct = ratioData.map(entry => {
+                const total = entry.layer1 + entry.layer2 + entry.layer3 + entry.layer4;
+                return (entry.layer4 / total) * 100;
+            });
 
             if (layerRatioChart) {
                 layerRatioChart.destroy();
             }
 
             layerRatioChart = new Chart(ctx, {
-                type: 'line',
+                type: 'bar',
                 data: {
                     labels: labels,
                     datasets: [
                         {
-                            label: 'Layer 1: Foundation (Baseline)',
-                            data: layer1Data,
-                            borderColor: '#2196f3',
-                            backgroundColor: 'rgba(33, 150, 243, 0.1)',
-                            tension: 0.4,
-                            fill: false,
-                            pointRadius: 0,
-                            pointHoverRadius: 4,
-                            borderWidth: 2,
-                            borderDash: [5, 5]
+                            label: 'Layer 1: Foundation',
+                            data: layer1Pct,
+                            backgroundColor: '#90caf9',
+                            borderWidth: 0
                         },
                         {
                             label: 'Layer 2: Compute & Logic',
-                            data: layer2Data,
-                            borderColor: '#fbc02d',
-                            backgroundColor: 'rgba(251, 192, 45, 0.1)',
-                            tension: 0.4,
-                            fill: false,
-                            pointRadius: 0,
-                            pointHoverRadius: 4,
-                            borderWidth: 2
+                            data: layer2Pct,
+                            backgroundColor: '#fff176',
+                            borderWidth: 0
                         },
                         {
                             label: 'Layer 3: Cloud & Data',
-                            data: layer3Data,
-                            borderColor: '#00897b',
-                            backgroundColor: 'rgba(0, 137, 123, 0.1)',
-                            tension: 0.4,
-                            fill: false,
-                            pointRadius: 0,
-                            pointHoverRadius: 4,
-                            borderWidth: 2
+                            data: layer3Pct,
+                            backgroundColor: '#80cbc4',
+                            borderWidth: 0
                         },
                         {
                             label: 'Layer 4: Interface & App',
-                            data: layer4Data,
-                            borderColor: '#9c27b0',
-                            backgroundColor: 'rgba(156, 39, 176, 0.1)',
-                            tension: 0.4,
-                            fill: false,
-                            pointRadius: 0,
-                            pointHoverRadius: 4,
-                            borderWidth: 2
+                            data: layer4Pct,
+                            backgroundColor: '#ce93d8',
+                            borderWidth: 0
                         }
                     ]
                 },
@@ -663,24 +657,27 @@
                             callbacks: {
                                 label: function(context) {
                                     const value = context.parsed.y;
-                                    return `${context.dataset.label}: ${value.toFixed(2)}x`;
+                                    return `${context.dataset.label}: ${value.toFixed(1)}%`;
                                 }
                             }
                         }
                     },
                     scales: {
                         y: {
-                            beginAtZero: false,
+                            stacked: true,
+                            beginAtZero: true,
+                            max: 100,
                             grid: {
                                 color: 'rgba(0, 0, 0, 0.05)'
                             },
                             ticks: {
                                 callback: function(value) {
-                                    return value.toFixed(1) + 'x';
+                                    return value + '%';
                                 }
                             }
                         },
                         x: {
+                            stacked: true,
                             grid: {
                                 display: false
                             },
