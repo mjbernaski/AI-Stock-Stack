@@ -119,12 +119,26 @@
             box-shadow: 0 1px 4px rgba(0,0,0,0.1);
         }
 
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
         .chart-title {
             font-size: 14px;
             font-weight: 600;
             color: #333;
-            margin-bottom: 12px;
-            text-align: center;
+        }
+
+        .history-select {
+            padding: 4px 8px;
+            font-size: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
         }
 
         .chart-canvas {
@@ -394,7 +408,17 @@
         </div>
 
         <div id="chartContainer" class="chart-container" style="display: none;">
-            <div class="chart-title">Tech Stack Index - Daily Market Cap</div>
+            <div class="chart-header">
+                <div class="chart-title">Tech Stack Index - Daily Market Cap</div>
+                <select id="historyRange" class="history-select">
+                    <option value="7">1 Week</option>
+                    <option value="30" selected>1 Month</option>
+                    <option value="90">3 Months</option>
+                    <option value="180">6 Months</option>
+                    <option value="365">1 Year</option>
+                    <option value="0">All</option>
+                </select>
+            </div>
             <canvas id="indexChart" class="chart-canvas"></canvas>
         </div>
 
@@ -413,26 +437,44 @@
         let indexChart = null;
         let layerRatioChart = null;
         let currentIndexData = null;
+        let fullHistoryData = null;
 
         async function fetchHistory() {
             try {
                 const response = await fetch('/api/history');
-                const data = await response.json();
-                renderChart(data);
+                fullHistoryData = await response.json();
+                const days = parseInt(document.getElementById('historyRange').value);
+                renderChart(fullHistoryData, days);
             } catch (error) {
                 console.error('Error fetching history:', error);
             }
         }
 
-        function renderChart(historyData) {
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('historyRange').addEventListener('change', function() {
+                if (fullHistoryData) {
+                    const days = parseInt(this.value);
+                    renderChart(fullHistoryData, days);
+                }
+            });
+        });
+
+        function renderChart(historyData, days = 30) {
             if (!historyData || historyData.length === 0) {
                 return;
             }
 
             const ctx = document.getElementById('indexChart').getContext('2d');
 
+            let filteredData = historyData;
+            if (days > 0) {
+                const cutoffDate = new Date();
+                cutoffDate.setDate(cutoffDate.getDate() - days);
+                filteredData = historyData.filter(entry => new Date(entry.timestamp) >= cutoffDate);
+            }
+
             const dailyData = {};
-            historyData.forEach(entry => {
+            filteredData.forEach(entry => {
                 const date = new Date(entry.timestamp);
                 const dateKey = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
                 dailyData[dateKey] = (entry.index.totalMarketCap || 0) / 1e12;
