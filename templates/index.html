@@ -406,17 +406,11 @@
         <div id="content">
             <div class="loading pulse">Loading stock data...</div>
         </div>
-
-        <div id="pieChartContainer" class="chart-container" style="display: none;">
-            <div class="chart-title">Market Cap Distribution by Layer</div>
-            <canvas id="pieChart" class="chart-canvas"></canvas>
-        </div>
     </div>
 
     <script>
         let updateInterval;
         let indexChart = null;
-        let pieChart = null;
         let layerRatioChart = null;
         let currentIndexData = null;
 
@@ -506,69 +500,6 @@
             });
 
             document.getElementById('chartContainer').style.display = 'block';
-        }
-
-        function renderPieChart(indexData) {
-            if (!indexData || !indexData.layers) return;
-
-            const ctx = document.getElementById('pieChart').getContext('2d');
-
-            const layerNames = {
-                'layer1': 'Layer 1: Foundation',
-                'layer2': 'Layer 2: Compute & Logic',
-                'layer3': 'Layer 3: Cloud & Data',
-                'layer4': 'Layer 4: Interface & App'
-            };
-
-            const labels = [];
-            const data = [];
-            const colors = ['#90caf9', '#fff176', '#80cbc4', '#ce93d8'];
-
-            ['layer1', 'layer2', 'layer3', 'layer4'].forEach((layerKey, index) => {
-                if (indexData.layers[layerKey]) {
-                    labels.push(layerNames[layerKey]);
-                    data.push(indexData.layers[layerKey].totalMarketCap / 1e12);
-                }
-            });
-
-            if (pieChart) {
-                pieChart.destroy();
-            }
-
-            pieChart = new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: data,
-                        backgroundColor: colors,
-                        borderWidth: 2,
-                        borderColor: '#ffffff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const label = context.label || '';
-                                    const value = context.parsed;
-                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    const percent = ((value / total) * 100).toFixed(1);
-                                    return `${label}: $${value.toFixed(1)}T (${percent}%)`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-
-            document.getElementById('pieChartContainer').style.display = 'block';
         }
 
         async function fetchLayerRatios() {
@@ -698,7 +629,6 @@
                 const data = await response.json();
                 currentIndexData = data.index;
                 renderIndex(data.index);
-                renderPieChart(data.index);
                 renderStocks(data.stocks);
                 updateLastUpdateTime(data.index.lastUpdated);
                 fetchHistory();
