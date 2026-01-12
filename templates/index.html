@@ -438,10 +438,11 @@
         let layerRatioChart = null;
         let currentIndexData = null;
         let fullHistoryData = null;
+        let fullLayerRatioData = null;
 
         async function fetchHistory() {
             try {
-                const response = await fetch('/api/history');
+                const response = await fetch('/api/layer-ratios');
                 fullHistoryData = await response.json();
                 const days = parseInt(document.getElementById('historyRange').value);
                 renderChart(fullHistoryData, days);
@@ -470,22 +471,14 @@
             if (days > 0) {
                 const cutoffDate = new Date();
                 cutoffDate.setDate(cutoffDate.getDate() - days);
-                filteredData = historyData.filter(entry => new Date(entry.timestamp) >= cutoffDate);
+                filteredData = historyData.filter(entry => new Date(entry.date) >= cutoffDate);
             }
 
-            const dailyData = new Map();
-            filteredData.forEach(entry => {
-                const date = new Date(entry.timestamp);
-                const dateKey = date.toISOString().split('T')[0];
-                dailyData.set(dateKey, (entry.index.totalMarketCap || 0) / 1e12);
-            });
-
-            const sortedDates = Array.from(dailyData.keys()).sort();
-            const labels = sortedDates.map(d => {
-                const date = new Date(d);
+            const labels = filteredData.map(entry => {
+                const date = new Date(entry.date);
                 return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
             });
-            const indexValues = sortedDates.map(d => dailyData.get(d));
+            const indexValues = filteredData.map(entry => (entry.totalMarketCap || 0) / 1e12);
 
             if (indexChart) {
                 indexChart.destroy();
@@ -549,12 +542,17 @@
         }
 
         async function fetchLayerRatios() {
-            try {
-                const response = await fetch('/api/layer-ratios');
-                const data = await response.json();
-                renderLayerRatioChart(data);
-            } catch (error) {
-                console.error('Error fetching layer ratios:', error);
+            if (fullHistoryData) {
+                renderLayerRatioChart(fullHistoryData);
+            } else {
+                try {
+                    const response = await fetch('/api/layer-ratios');
+                    const data = await response.json();
+                    fullHistoryData = data;
+                    renderLayerRatioChart(data);
+                } catch (error) {
+                    console.error('Error fetching layer ratios:', error);
+                }
             }
         }
 

@@ -299,9 +299,12 @@ def fetch_historical_layer_ratios():
 
         foundation_cap = layer_caps['layer1']
 
+        total_market_cap = layer_caps['layer1'] + layer_caps['layer2'] + layer_caps['layer3'] + layer_caps['layer4']
+
         if foundation_cap > 0:
             ratios = {
                 'date': date_str,
+                'totalMarketCap': total_market_cap,
                 'layer1': 1.0,
                 'layer2': layer_caps['layer2'] / foundation_cap,
                 'layer3': layer_caps['layer3'] / foundation_cap,
