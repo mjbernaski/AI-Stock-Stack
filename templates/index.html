@@ -473,15 +473,19 @@
                 filteredData = historyData.filter(entry => new Date(entry.timestamp) >= cutoffDate);
             }
 
-            const dailyData = {};
+            const dailyData = new Map();
             filteredData.forEach(entry => {
                 const date = new Date(entry.timestamp);
-                const dateKey = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-                dailyData[dateKey] = (entry.index.totalMarketCap || 0) / 1e12;
+                const dateKey = date.toISOString().split('T')[0];
+                dailyData.set(dateKey, (entry.index.totalMarketCap || 0) / 1e12);
             });
 
-            const labels = Object.keys(dailyData);
-            const indexValues = Object.values(dailyData);
+            const sortedDates = Array.from(dailyData.keys()).sort();
+            const labels = sortedDates.map(d => {
+                const date = new Date(d);
+                return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+            });
+            const indexValues = sortedDates.map(d => dailyData.get(d));
 
             if (indexChart) {
                 indexChart.destroy();
