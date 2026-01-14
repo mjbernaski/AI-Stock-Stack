@@ -297,8 +297,10 @@ def fetch_historical_layer_ratios():
     for date_str in sorted(daily_layer_market_caps.keys()):
         layer_caps = daily_layer_market_caps[date_str]
 
-        foundation_cap = layer_caps['layer1']
+        if layer_caps['layer1'] == 0 or layer_caps['layer2'] == 0 or layer_caps['layer3'] == 0 or layer_caps['layer4'] == 0:
+            continue
 
+        foundation_cap = layer_caps['layer1']
         total_market_cap = layer_caps['layer1'] + layer_caps['layer2'] + layer_caps['layer3'] + layer_caps['layer4']
 
         if foundation_cap > 0:
