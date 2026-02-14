@@ -824,8 +824,12 @@
             const config = await response.json();
             const intervalMs = config.updateInterval * 60 * 1000;
 
-            setInterval(() => {
-                fetchStocks();
+            setInterval(async () => {
+                const statusResp = await fetch('/api/config');
+                const status = await statusResp.json();
+                if (status.marketOpen) {
+                    fetchStocks();
+                }
             }, intervalMs);
         }
 

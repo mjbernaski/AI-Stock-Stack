@@ -3,7 +3,7 @@ import yfinance as yf
 from flask import Flask, jsonify, render_template
 from flask_cors import CORS
 from apscheduler.schedulers.background import BackgroundScheduler
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import threading
 import os
 
@@ -71,6 +71,21 @@ def format_market_cap(value):
     elif value >= 1e6:
         return f"${value/1e6:.0f}M"
     return f"${value:.0f}"
+
+def is_market_open():
+    eastern = timezone(timedelta(hours=-5))
+    now = datetime.now(eastern)
+    if now.weekday() >= 5:
+        return False
+    market_open = now.replace(hour=9, minute=30, second=0, microsecond=0)
+    market_close = now.replace(hour=16, minute=0, second=0, microsecond=0)
+    return market_open <= now <= market_close
+
+def scheduled_fetch():
+    if not is_market_open():
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Market closed, skipping update")
+        return
+    fetch_stock_data()
 
 def fetch_stock_data():
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Fetching stock data...")
@@ -339,7 +354,8 @@ def get_stocks():
 @app.route('/api/config')
 def get_config():
     return jsonify({
-        'updateInterval': config['scheduler']['update_interval_minutes']
+        'updateInterval': config['scheduler']['update_interval_minutes'],
+        'marketOpen': is_market_open()
     })
 
 @app.route('/api/history')
@@ -359,7 +375,7 @@ if __name__ == '__main__':
 
     scheduler = BackgroundScheduler()
     scheduler.add_job(
-        func=fetch_stock_data,
+        func=scheduled_fetch,
         trigger="interval",
         minutes=config['scheduler']['update_interval_minutes']
     )
