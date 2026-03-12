@@ -827,8 +827,9 @@
         function updateLastUpdateTime(timestamp) {
             if (timestamp) {
                 const date = new Date(timestamp);
+                const dateString = date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
                 const timeString = date.toLocaleTimeString();
-                document.getElementById('lastUpdate').textContent = `Last updated: ${timeString}`;
+                document.getElementById('lastUpdate').textContent = `Last updated: ${dateString} ${timeString}`;
             }
         }
 
