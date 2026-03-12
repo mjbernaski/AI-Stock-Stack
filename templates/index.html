@@ -39,7 +39,7 @@
         }
 
         .index-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
             color: white;
             padding: 16px;
             border-radius: 10px;
@@ -47,11 +47,31 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
 
+        .index-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 4px;
+        }
+
         .index-title {
             font-size: 12px;
             font-weight: 500;
             opacity: 0.9;
-            margin-bottom: 4px;
+        }
+
+        .index-clock {
+            text-align: right;
+        }
+
+        .index-clock-time {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .index-clock-countdown {
+            font-size: 11px;
+            opacity: 0.85;
         }
 
         .index-main {
@@ -393,7 +413,13 @@
         <div class="last-update" id="lastUpdate">Loading...</div>
 
         <div id="indexCard" class="index-card" style="display: none;">
-            <div class="index-title">Tech Stack Index - Market Cap Weighted</div>
+            <div class="index-header">
+                <div class="index-title">Tech Stack Index - Market Cap Weighted</div>
+                <div class="index-clock">
+                    <div class="index-clock-time" id="indexClockTime"></div>
+                    <div class="index-clock-countdown" id="indexClockCountdown"></div>
+                </div>
+            </div>
             <div class="index-main">
                 <div class="index-change">
                     <span id="indexArrow" class="index-arrow">─</span>
@@ -846,6 +872,48 @@
                 }
             }, intervalMs);
         }
+
+        function updateIndexClock() {
+            const now = new Date();
+            const eastern = now.toLocaleTimeString('en-US', {
+                timeZone: 'America/New_York',
+                hour: 'numeric',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            });
+            document.getElementById('indexClockTime').textContent = eastern + ' ET';
+
+            // Market close is 4:00 PM ET
+            const etNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+            const day = etNow.getDay();
+            const close = new Date(etNow);
+            close.setHours(16, 0, 0, 0);
+
+            const countdownEl = document.getElementById('indexClockCountdown');
+            if (day === 0 || day === 6) {
+                countdownEl.textContent = 'Market Closed (Weekend)';
+            } else if (etNow < new Date(etNow).setHours(9, 30, 0, 0)) {
+                const open = new Date(etNow);
+                open.setHours(9, 30, 0, 0);
+                const diff = open - etNow;
+                const h = Math.floor(diff / 3600000);
+                const m = Math.floor((diff % 3600000) / 60000);
+                const s = Math.floor((diff % 60000) / 1000);
+                countdownEl.textContent = `Market opens in ${h}h ${m}m ${s}s`;
+            } else if (etNow > close) {
+                countdownEl.textContent = 'Market Closed';
+            } else {
+                const diff = close - etNow;
+                const h = Math.floor(diff / 3600000);
+                const m = Math.floor((diff % 3600000) / 60000);
+                const s = Math.floor((diff % 60000) / 1000);
+                countdownEl.textContent = `Market closes in ${h}h ${m}m ${s}s`;
+            }
+        }
+
+        updateIndexClock();
+        setInterval(updateIndexClock, 1000);
 
         fetchStocks();
         initAutoUpdate();
