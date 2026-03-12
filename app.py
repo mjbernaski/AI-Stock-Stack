@@ -181,10 +181,13 @@ def fetch_stock_data():
 
     if total_market_cap > 0:
         index_change_percent = weighted_return / total_market_cap
+        change_dollar = total_market_cap * index_change_percent / 100
         new_index = {
             'totalMarketCap': total_market_cap,
             'totalMarketCapFormatted': format_market_cap(total_market_cap),
             'changePercent': float(index_change_percent),
+            'changeDollar': float(change_dollar),
+            'changeDollarFormatted': format_market_cap(abs(change_dollar)),
             'direction': 'up' if index_change_percent > 0 else 'down' if index_change_percent < 0 else 'neutral',
             'stockCount': len(all_stocks),
             'lastUpdated': datetime.now().isoformat(),

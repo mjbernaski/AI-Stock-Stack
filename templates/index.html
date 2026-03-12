@@ -69,6 +69,11 @@
             align-items: center;
             gap: 6px;
         }
+        .index-change-dollar {
+            font-size: 18px;
+            opacity: 0.85;
+            font-weight: normal;
+        }
 
         .index-arrow {
             font-size: 24px;
@@ -393,6 +398,7 @@
                 <div class="index-change">
                     <span id="indexArrow" class="index-arrow">─</span>
                     <span id="indexChange">0.00%</span>
+                    <span id="indexChangeDollar" class="index-change-dollar"></span>
                 </div>
             </div>
             <div class="index-stats">
@@ -707,6 +713,13 @@
             }
 
             indexChange.textContent = `${sign}${changePercent.toFixed(2)}%`;
+
+            const indexChangeDollar = document.getElementById('indexChangeDollar');
+            if (indexData.changeDollarFormatted) {
+                const dollarSign = changePercent >= 0 ? '+' : '-';
+                indexChangeDollar.textContent = `(${dollarSign}${indexData.changeDollarFormatted})`;
+            }
+
             indexMarketCap.textContent = indexData.totalMarketCapFormatted || 'N/A';
             indexStockCount.textContent = indexData.stockCount || 0;
 
