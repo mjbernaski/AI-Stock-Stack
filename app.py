@@ -299,7 +299,7 @@ def fetch_historical_layer_ratios():
 
                 if date_str not in daily_layer_market_caps:
                     daily_layer_market_caps[date_str] = {
-                        'layer1': 0, 'layer2': 0, 'layer3': 0, 'layer4': 0
+                        'layer0': 0, 'layer1': 0, 'layer2': 0, 'layer3': 0, 'layer4': 0
                     }
 
                 layer = ticker_to_layer[ticker]
@@ -319,12 +319,13 @@ def fetch_historical_layer_ratios():
             continue
 
         foundation_cap = layer_caps['layer1']
-        total_market_cap = layer_caps['layer1'] + layer_caps['layer2'] + layer_caps['layer3'] + layer_caps['layer4']
+        total_market_cap = layer_caps['layer0'] + layer_caps['layer1'] + layer_caps['layer2'] + layer_caps['layer3'] + layer_caps['layer4']
 
         if foundation_cap > 0:
             ratios = {
                 'date': date_str,
                 'totalMarketCap': total_market_cap,
+                'layer0': layer_caps['layer0'] / foundation_cap if layer_caps['layer0'] > 0 else 0,
                 'layer1': 1.0,
                 'layer2': layer_caps['layer2'] / foundation_cap,
                 'layer3': layer_caps['layer3'] / foundation_cap,

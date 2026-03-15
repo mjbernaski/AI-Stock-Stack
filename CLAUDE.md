@@ -5,10 +5,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 AI-Stock-Stack is a technology stock market analysis application that visualizes companies organized by market cap layers:
-- Layer 1: Foundation (semiconductor/materials companies like TSMC, Micron)
-- Layer 2: Compute & Logic (chip designers like Nvidia, AMD, Qualcomm)
-- Layer 3: Cloud & Data (cloud providers like Microsoft, Google, Amazon)
-- Layer 4: Interface & App (consumer-facing tech like Apple, Meta, Tesla)
+- Layer 0: Energy & Infrastructure (power generation like Constellation Energy, NextEra, GE Vernova)
+- Layer 1: Foundation (semiconductor/materials companies like TSMC, Arm, ASML, Micron)
+- Layer 2: Compute & Logic (chip designers like Nvidia, AMD, Broadcom, Arista)
+- Layer 3: Cloud & Data (cloud providers like Microsoft, Google, Amazon, Equinix)
+- Layer 4: Interface & App (consumer-facing tech like Apple, Meta, Tesla, CrowdStrike)
 
 ## Architecture
 
@@ -33,7 +34,7 @@ When setting up the project for the first time:
 
 ## Key Considerations
 
-- The UI should display companies organized into four distinct colored layers matching the design
+- The UI should display companies organized into five distinct colored layers (0-4) matching the design
 - Each company card shows: ticker symbol, company name, and market cap
 - Market cap data should be fetched from reliable financial APIs
 - Consider caching strategies for stock data to avoid excessive API calls

@@ -11,16 +11,27 @@
     {"ticker": "AAPL", "shares": 1062, "costBasis": 48504}
   ],
   "stocks": {
+    "layer0": [
+      {"ticker": "CEG", "name": "Constellation Energy"},
+      {"ticker": "VST", "name": "Vistra Corp"},
+      {"ticker": "NEE", "name": "NextEra Energy"},
+      {"ticker": "GEV", "name": "GE Vernova"},
+      {"ticker": "PWR", "name": "Quanta Services"}
+    ],
     "layer1": [
       {"ticker": "TSM", "name": "TSMC"},
+      {"ticker": "ARM", "name": "Arm Holdings"},
       {"ticker": "ASML", "name": "ASML"},
       {"ticker": "MU", "name": "Micron"},
       {"ticker": "AMAT", "name": "Applied Materials"},
-      {"ticker": "LRCX", "name": "Lam Research"}
+      {"ticker": "LRCX", "name": "Lam Research"},
+      {"ticker": "MRVL", "name": "Marvell Technology"}
     ],
     "layer2": [
       {"ticker": "NVDA", "name": "Nvidia"},
       {"ticker": "AVGO", "name": "Broadcom"},
+      {"ticker": "ANET", "name": "Arista Networks"},
+      {"ticker": "SMCI", "name": "Super Micro Computer"},
       {"ticker": "AMD", "name": "AMD"},
       {"ticker": "QCOM", "name": "Qualcomm"},
       {"ticker": "DELL", "name": "Dell"},
@@ -30,14 +41,16 @@
       {"ticker": "MSFT", "name": "Microsoft"},
       {"ticker": "GOOGL", "name": "Alphabet"},
       {"ticker": "AMZN", "name": "Amazon"},
-      {"ticker": "ORCL", "name": "Oracle"}
+      {"ticker": "ORCL", "name": "Oracle"},
+      {"ticker": "EQIX", "name": "Equinix"},
+      {"ticker": "SNOW", "name": "Snowflake"}
     ],
     "layer4": [
       {"ticker": "AAPL", "name": "Apple"},
       {"ticker": "META", "name": "Meta"},
       {"ticker": "TSLA", "name": "Tesla"},
-      {"ticker": "TCEHY", "name": "Tencent"},
       {"ticker": "PLTR", "name": "Palantir"},
+      {"ticker": "CRWD", "name": "CrowdStrike"},
       {"ticker": "CRM", "name": "Salesforce"},
       {"ticker": "ADBE", "name": "Adobe"},
       {"ticker": "NOW", "name": "ServiceNow"}

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Technology Market Cap Layers</title>
+    <title>AI & Technology Stock Stack</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * {
@@ -336,6 +336,11 @@
             border-color: #80cbc4;
         }
 
+        .layer0 {
+            background: #fff3e0;
+            border-color: #ffb74d;
+        }
+
         .layer4 {
             background: #f3e5f5;
             border-color: #ce93d8;
@@ -517,7 +522,7 @@
 <body>
     <button class="bw-toggle" id="bwToggle" title="Toggle B&W mode"></button>
     <div class="container">
-        <h1>Technology Market Cap Layers</h1>
+        <h1>AI & Technology Stock Stack</h1>
         <div class="last-update" id="lastUpdate">Loading...</div>
 
         <div id="indexCard" class="index-card" style="display: none;">
@@ -710,20 +715,24 @@
                 return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
             });
 
+            const layer0Pct = ratioData.map(entry => {
+                const total = (entry.layer0 || 0) + entry.layer1 + entry.layer2 + entry.layer3 + entry.layer4;
+                return ((entry.layer0 || 0) / total) * 100;
+            });
             const layer1Pct = ratioData.map(entry => {
-                const total = entry.layer1 + entry.layer2 + entry.layer3 + entry.layer4;
+                const total = (entry.layer0 || 0) + entry.layer1 + entry.layer2 + entry.layer3 + entry.layer4;
                 return (entry.layer1 / total) * 100;
             });
             const layer2Pct = ratioData.map(entry => {
-                const total = entry.layer1 + entry.layer2 + entry.layer3 + entry.layer4;
+                const total = (entry.layer0 || 0) + entry.layer1 + entry.layer2 + entry.layer3 + entry.layer4;
                 return (entry.layer2 / total) * 100;
             });
             const layer3Pct = ratioData.map(entry => {
-                const total = entry.layer1 + entry.layer2 + entry.layer3 + entry.layer4;
+                const total = (entry.layer0 || 0) + entry.layer1 + entry.layer2 + entry.layer3 + entry.layer4;
                 return (entry.layer3 / total) * 100;
             });
             const layer4Pct = ratioData.map(entry => {
-                const total = entry.layer1 + entry.layer2 + entry.layer3 + entry.layer4;
+                const total = (entry.layer0 || 0) + entry.layer1 + entry.layer2 + entry.layer3 + entry.layer4;
                 return (entry.layer4 / total) * 100;
             });
 
@@ -736,6 +745,12 @@
                 data: {
                     labels: labels,
                     datasets: [
+                        {
+                            label: 'Layer 0: Energy',
+                            data: layer0Pct,
+                            backgroundColor: '#ffb74d',
+                            borderWidth: 0
+                        },
                         {
                             label: 'Layer 1: Foundation',
                             data: layer1Pct,
@@ -931,7 +946,8 @@
                 { key: 'layer4', title: 'Layer 4: Interface & App', class: 'layer4' },
                 { key: 'layer3', title: 'Layer 3: Cloud & Data', class: 'layer3' },
                 { key: 'layer2', title: 'Layer 2: Compute & Logic', class: 'layer2' },
-                { key: 'layer1', title: 'Layer 1: Foundation', class: 'layer1' }
+                { key: 'layer1', title: 'Layer 1: Foundation', class: 'layer1' },
+                { key: 'layer0', title: 'Layer 0: Energy & Infrastructure', class: 'layer0' }
             ];
 
             let html = '';
