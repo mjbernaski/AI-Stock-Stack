@@ -490,9 +490,32 @@
         .pulse {
             animation: pulse 1.5s ease-in-out infinite;
         }
+
+        .bw-toggle {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid #999;
+            background: linear-gradient(135deg, #fff 50%, #333 50%);
+            cursor: pointer;
+            z-index: 200;
+            transition: transform 0.2s;
+        }
+
+        .bw-toggle:hover {
+            transform: scale(1.1);
+        }
+
+        body.bw {
+            filter: grayscale(100%);
+        }
     </style>
 </head>
 <body>
+    <button class="bw-toggle" id="bwToggle" title="Toggle B&W mode"></button>
     <div class="container">
         <h1>Technology Market Cap Layers</h1>
         <div class="last-update" id="lastUpdate">Loading...</div>
@@ -1065,6 +1088,14 @@
 
         updateIndexClock();
         setInterval(updateIndexClock, 1000);
+
+        if (localStorage.getItem('bwMode') === 'true') {
+            document.body.classList.add('bw');
+        }
+        document.getElementById('bwToggle').addEventListener('click', function() {
+            document.body.classList.toggle('bw');
+            localStorage.setItem('bwMode', document.body.classList.contains('bw'));
+        });
 
         initAutoUpdate().then(() => fetchStocks());
     </script>
