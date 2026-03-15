@@ -358,7 +358,8 @@ def get_stocks():
 def get_config():
     return jsonify({
         'updateInterval': config['scheduler']['update_interval_minutes'],
-        'marketOpen': is_market_open()
+        'marketOpen': is_market_open(),
+        'holdings': config.get('holdings', [])
     })
 
 @app.route('/api/history')

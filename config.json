@@ -4,11 +4,16 @@
     "port": 1111
   },
   "scheduler": {
-    "update_interval_minutes": 15
+    "update_interval_minutes": 7.5
   },
+  "holdings": [
+    {"ticker": "GOOGL", "shares": 4936, "costBasis": 965428},
+    {"ticker": "AAPL", "shares": 1062, "costBasis": 48504}
+  ],
   "stocks": {
     "layer1": [
       {"ticker": "TSM", "name": "TSMC"},
+      {"ticker": "ASML", "name": "ASML"},
       {"ticker": "MU", "name": "Micron"},
       {"ticker": "AMAT", "name": "Applied Materials"},
       {"ticker": "LRCX", "name": "Lam Research"}

@@ -74,6 +74,91 @@
             opacity: 0.85;
         }
 
+        .index-holdings {
+            display: flex;
+            gap: 16px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255,255,255,0.15);
+        }
+
+        .index-holding {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+        }
+
+        .index-holding-ticker {
+            font-weight: bold;
+            opacity: 0.9;
+        }
+
+        .index-holding-price {
+            opacity: 0.75;
+        }
+
+        .index-holding-change {
+            font-weight: 500;
+        }
+
+        .index-holding-change.up { color: #4ade80; }
+        .index-holding-change.down { color: #f87171; }
+
+        .index-holding {
+            position: relative;
+            cursor: default;
+        }
+
+        .holding-tooltip {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #222;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            padding: 10px 14px;
+            white-space: nowrap;
+            z-index: 100;
+            margin-bottom: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+
+        .holding-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: #222;
+        }
+
+        .index-holding:hover .holding-tooltip {
+            display: block;
+        }
+
+        .tooltip-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .tooltip-label {
+            opacity: 0.7;
+        }
+
+        .tooltip-value {
+            font-weight: 600;
+        }
+
+        .tooltip-value.up { color: #4ade80; }
+        .tooltip-value.down { color: #f87171; }
+
         .index-main {
             display: flex;
             justify-content: center;
@@ -437,6 +522,7 @@
                     <div class="index-stat-value" id="indexStockCount">0</div>
                 </div>
             </div>
+            <div class="index-holdings" id="indexHoldings"></div>
         </div>
 
         <div id="chartContainer" class="chart-container" style="display: none;">
@@ -471,6 +557,7 @@
         let currentIndexData = null;
         let fullHistoryData = null;
         let fullLayerRatioData = null;
+        let holdingsConfig = [];
 
         async function fetchHistory() {
             try {
@@ -706,6 +793,7 @@
                 currentIndexData = data.index;
                 renderIndex(data.index);
                 renderStocks(data.stocks);
+                renderHoldings(data.stocks);
                 updateLastUpdateTime(data.index.lastUpdated);
                 fetchHistory();
                 fetchLayerRatios();
@@ -715,6 +803,68 @@
                     <div class="error">Failed to load stock data. Retrying...</div>
                 `;
             }
+        }
+
+        function renderHoldings(stocks) {
+            const allStocks = Object.values(stocks).flat();
+            const container = document.getElementById('indexHoldings');
+            const holdingTickers = holdingsConfig.map(h => h.ticker);
+            if (holdingTickers.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+            container.innerHTML = holdingTickers.map(ticker => {
+                const stock = allStocks.find(s => s.ticker === ticker);
+                if (!stock || !stock.price) return '';
+                const sign = stock.priceChangePercent >= 0 ? '+' : '';
+                const dir = stock.direction || 'neutral';
+                const holding = holdingsConfig.find(h => h.ticker === ticker);
+
+                let tooltipHtml = '';
+                if (holding) {
+                    const shares = holding.shares;
+                    const costBasis = holding.costBasis;
+                    const totalValue = shares * stock.price;
+                    const totalGain = totalValue - costBasis;
+                    const totalGainPct = (totalGain / costBasis) * 100;
+                    const dayChange = shares * (stock.priceChange || 0);
+
+                    const fmtDollar = (v) => {
+                        const abs = Math.abs(v);
+                        const s = abs >= 1e6 ? `$${(abs/1e6).toFixed(2)}M` : `$${abs.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                        return v >= 0 ? '+' + s : '-' + s;
+                    };
+
+                    const totalDir = totalGain >= 0 ? 'up' : 'down';
+                    const dayDir = dayChange >= 0 ? 'up' : 'down';
+
+                    tooltipHtml = `
+                        <div class="holding-tooltip">
+                            <div class="tooltip-row">
+                                <span class="tooltip-label">${shares.toLocaleString()} shares</span>
+                                <span class="tooltip-value">$${totalValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                            </div>
+                            <div class="tooltip-row">
+                                <span class="tooltip-label">Total P&L</span>
+                                <span class="tooltip-value ${totalDir}">${fmtDollar(totalGain)} (${totalGain >= 0 ? '+' : ''}${totalGainPct.toFixed(2)}%)</span>
+                            </div>
+                            <div class="tooltip-row">
+                                <span class="tooltip-label">Day Change</span>
+                                <span class="tooltip-value ${dayDir}">${fmtDollar(dayChange)}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                return `
+                    <div class="index-holding">
+                        ${tooltipHtml}
+                        <span class="index-holding-ticker">${ticker}</span>
+                        <span class="index-holding-price">$${stock.price.toFixed(2)}</span>
+                        <span class="index-holding-change ${dir}">${sign}${stock.priceChangePercent.toFixed(2)}%</span>
+                    </div>
+                `;
+            }).join('');
         }
 
         function renderIndex(indexData) {
@@ -862,6 +1012,7 @@
         async function initAutoUpdate() {
             const response = await fetch('/api/config');
             const config = await response.json();
+            holdingsConfig = config.holdings || [];
             const intervalMs = config.updateInterval * 60 * 1000;
 
             setInterval(async () => {
@@ -915,8 +1066,7 @@
         updateIndexClock();
         setInterval(updateIndexClock, 1000);
 
-        fetchStocks();
-        initAutoUpdate();
+        initAutoUpdate().then(() => fetchStocks());
     </script>
 </body>
 </html>
