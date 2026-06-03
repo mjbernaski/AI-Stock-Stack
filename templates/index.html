@@ -514,12 +514,40 @@
             transform: scale(1.1);
         }
 
+        .mag7-toggle {
+            position: fixed;
+            top: 12px;
+            right: 52px;
+            height: 32px;
+            padding: 0 12px;
+            border-radius: 16px;
+            border: 2px solid #999;
+            background: #fff;
+            color: #333;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            z-index: 200;
+            transition: transform 0.2s, background 0.2s, color 0.2s;
+        }
+
+        .mag7-toggle:hover {
+            transform: scale(1.05);
+        }
+
+        .mag7-toggle.active {
+            background: #1976d2;
+            color: #fff;
+            border-color: #1976d2;
+        }
+
         body.bw {
             filter: grayscale(100%);
         }
     </style>
 </head>
 <body>
+    <button class="mag7-toggle" id="mag7Toggle" title="Show only the Magnificent 7">Mag 7</button>
     <button class="bw-toggle" id="bwToggle" title="Toggle B&W mode"></button>
     <div class="container">
         <h1>AI & Technology Stock Stack</h1>
@@ -527,7 +555,7 @@
 
         <div id="indexCard" class="index-card" style="display: none;">
             <div class="index-header">
-                <div class="index-title">Tech Stack Index - Market Cap Weighted</div>
+                <div class="index-title" id="indexTitle">Tech Stack Index - Market Cap Weighted</div>
                 <div class="index-clock">
                     <div class="index-clock-time" id="indexClockTime"></div>
                     <div class="index-clock-countdown" id="indexClockCountdown"></div>
@@ -555,7 +583,7 @@
 
         <div id="chartContainer" class="chart-container" style="display: none;">
             <div class="chart-header">
-                <div class="chart-title">Tech Stack Index - Daily Market Cap</div>
+                <div class="chart-title" id="indexChartTitle">Tech Stack Index - Daily Market Cap</div>
                 <select id="historyRange" class="history-select">
                     <option value="7">1 Week</option>
                     <option value="30" selected>1 Month</option>
@@ -583,9 +611,47 @@
         let indexChart = null;
         let layerRatioChart = null;
         let currentIndexData = null;
+        let currentStockData = null;
         let fullHistoryData = null;
         let fullLayerRatioData = null;
         let holdingsConfig = [];
+        let mag7Mode = localStorage.getItem('mag7Mode') === 'true';
+
+        const MAG7 = new Set(['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA']);
+
+        function formatMarketCap(value) {
+            if (!value) return 'N/A';
+            if (value >= 1e12) return `$${(value / 1e12).toFixed(1)}T`;
+            if (value >= 1e9) return `$${(value / 1e9).toFixed(0)}B`;
+            if (value >= 1e6) return `$${(value / 1e6).toFixed(0)}M`;
+            return `$${value.toFixed(0)}`;
+        }
+
+        function computeMag7Index(stocks) {
+            if (!stocks) return null;
+            const members = Object.values(stocks).flat().filter(s =>
+                MAG7.has(s.ticker) && s.marketCap && s.priceChangePercent != null);
+            let totalMC = 0, weighted = 0;
+            members.forEach(s => {
+                totalMC += s.marketCap;
+                weighted += s.marketCap * s.priceChangePercent;
+            });
+            const changePercent = totalMC > 0 ? weighted / totalMC : 0;
+            const changeDollar = totalMC * changePercent / 100;
+            return {
+                totalMarketCap: totalMC,
+                totalMarketCapFormatted: formatMarketCap(totalMC),
+                changePercent: changePercent,
+                changeDollar: changeDollar,
+                changeDollarFormatted: formatMarketCap(Math.abs(changeDollar)),
+                direction: changePercent > 0 ? 'up' : changePercent < 0 ? 'down' : 'neutral',
+                stockCount: members.length
+            };
+        }
+
+        function getDisplayIndex() {
+            return mag7Mode ? computeMag7Index(currentStockData) : currentIndexData;
+        }
 
         async function fetchHistory() {
             try {
@@ -625,7 +691,15 @@
                 const date = new Date(entry.date);
                 return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
             });
-            const indexValues = filteredData.map(entry => (entry.totalMarketCap || 0) / 1e12);
+            const field = mag7Mode ? 'mag7' : 'totalMarketCap';
+            const indexValues = filteredData.map(entry => (entry[field] || 0) / 1e12);
+            const datasetLabel = mag7Mode ? 'Magnificent 7 (Total Market Cap)' : 'Tech Stack Index (Total Market Cap)';
+            const lineColor = mag7Mode ? '#1976d2' : '#667eea';
+            const fillColor = mag7Mode ? 'rgba(25, 118, 210, 0.1)' : 'rgba(102, 126, 234, 0.1)';
+
+            document.getElementById('indexChartTitle').textContent = mag7Mode
+                ? 'Magnificent 7 - Daily Market Cap'
+                : 'Tech Stack Index - Daily Market Cap';
 
             if (indexChart) {
                 indexChart.destroy();
@@ -636,10 +710,10 @@
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'Tech Stack Index (Total Market Cap)',
+                        label: datasetLabel,
                         data: indexValues,
-                        borderColor: '#667eea',
-                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderColor: lineColor,
+                        backgroundColor: fillColor,
                         tension: 0.4,
                         fill: true,
                         pointRadius: 3,
@@ -704,6 +778,10 @@
         }
 
         function renderLayerRatioChart(ratioData) {
+            if (mag7Mode) {
+                document.getElementById('layerRatioChartContainer').style.display = 'none';
+                return;
+            }
             if (!ratioData || ratioData.length === 0) {
                 return;
             }
@@ -829,7 +907,8 @@
                 const response = await fetch('/api/stocks');
                 const data = await response.json();
                 currentIndexData = data.index;
-                renderIndex(data.index);
+                currentStockData = data.stocks;
+                renderIndex(getDisplayIndex());
                 renderStocks(data.stocks);
                 renderHoldings(data.stocks);
                 updateLastUpdateTime(data.index.lastUpdated);
@@ -937,6 +1016,10 @@
             indexMarketCap.textContent = indexData.totalMarketCapFormatted || 'N/A';
             indexStockCount.textContent = indexData.stockCount || 0;
 
+            document.getElementById('indexTitle').textContent = mag7Mode
+                ? 'Magnificent 7 Index - Market Cap Weighted'
+                : 'Tech Stack Index - Market Cap Weighted';
+
             indexCard.style.display = 'block';
         }
 
@@ -950,15 +1033,23 @@
                 { key: 'layer0', title: 'Layer 0: Energy & Infrastructure', class: 'layer0' }
             ];
 
+            const visibleLayers = layers.filter(layer => {
+                if (!mag7Mode) return true;
+                return (data[layer.key] || []).some(stock => MAG7.has(stock.ticker));
+            });
+
             let html = '';
 
-            layers.forEach((layer, index) => {
-                const stocks = data[layer.key] || [];
+            visibleLayers.forEach((layer, index) => {
+                let stocks = data[layer.key] || [];
+                if (mag7Mode) {
+                    stocks = stocks.filter(stock => MAG7.has(stock.ticker));
+                }
 
                 let layerIndexHtml = '';
                 let layerTotalHtml = '';
 
-                if (currentIndexData && currentIndexData.layers && currentIndexData.layers[layer.key]) {
+                if (!mag7Mode && currentIndexData && currentIndexData.layers && currentIndexData.layers[layer.key]) {
                     const layerMetrics = currentIndexData.layers[layer.key];
                     const changePercent = layerMetrics.changePercent || 0;
                     const sign = changePercent > 0 ? '+' : '';
@@ -992,7 +1083,7 @@
                     </div>
                 `;
 
-                if (index < layers.length - 1) {
+                if (index < visibleLayers.length - 1) {
                     html += '<div class="layer-arrow">↓</div>';
                 }
             });
@@ -1104,6 +1195,25 @@
 
         updateIndexClock();
         setInterval(updateIndexClock, 1000);
+
+        const mag7Toggle = document.getElementById('mag7Toggle');
+        if (mag7Mode) {
+            mag7Toggle.classList.add('active');
+        }
+        mag7Toggle.addEventListener('click', function() {
+            mag7Mode = !mag7Mode;
+            mag7Toggle.classList.toggle('active', mag7Mode);
+            localStorage.setItem('mag7Mode', mag7Mode);
+            if (currentStockData) {
+                renderIndex(getDisplayIndex());
+                renderStocks(currentStockData);
+            }
+            if (fullHistoryData) {
+                const days = parseInt(document.getElementById('historyRange').value);
+                renderChart(fullHistoryData, days);
+                renderLayerRatioChart(fullHistoryData);
+            }
+        });
 
         if (localStorage.getItem('bwMode') === 'true') {
             document.body.classList.add('bw');

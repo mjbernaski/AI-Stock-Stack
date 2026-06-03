@@ -16,6 +16,8 @@ with open('config.json', 'r') as f:
 HISTORY_FILE = 'historical_data.json'
 LAYER_RATIO_CACHE_FILE = 'layer_ratio_history.json'
 
+MAG7_TICKERS = {'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA'}
+
 stock_data = {}
 index_data = {}
 historical_data = []
@@ -243,6 +245,10 @@ def fetch_historical_layer_ratios():
 
     cached_data = load_layer_ratio_cache()
 
+    if cached_data and 'mag7' not in cached_data[-1]:
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Cache predates Mag 7 index; refetching full history to backfill")
+        cached_data = []
+
     end_date = datetime.now()
 
     if cached_data and len(cached_data) > 0:
@@ -272,6 +278,7 @@ def fetch_historical_layer_ratios():
             ticker_to_layer[ticker] = layer_name
 
     daily_layer_market_caps = {}
+    daily_mag7_market_caps = {}
 
     for ticker in all_tickers:
         try:
@@ -305,6 +312,9 @@ def fetch_historical_layer_ratios():
                 layer = ticker_to_layer[ticker]
                 daily_layer_market_caps[date_str][layer] += market_cap_on_date
 
+                if ticker in MAG7_TICKERS:
+                    daily_mag7_market_caps[date_str] = daily_mag7_market_caps.get(date_str, 0) + market_cap_on_date
+
             print(f"  {ticker}: {len(hist)} days of data")
 
         except Exception as e:
@@ -325,6 +335,7 @@ def fetch_historical_layer_ratios():
             ratios = {
                 'date': date_str,
                 'totalMarketCap': total_market_cap,
+                'mag7': daily_mag7_market_caps.get(date_str, 0),
                 'layer0': layer_caps['layer0'] / foundation_cap if layer_caps['layer0'] > 0 else 0,
                 'layer1': 1.0,
                 'layer2': layer_caps['layer2'] / foundation_cap,
