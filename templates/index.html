@@ -691,15 +691,10 @@
                 const date = new Date(entry.date);
                 return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
             });
-            const field = mag7Mode ? 'mag7' : 'totalMarketCap';
-            const indexValues = filteredData.map(entry => (entry[field] || 0) / 1e12);
-            const datasetLabel = mag7Mode ? 'Magnificent 7 (Total Market Cap)' : 'Tech Stack Index (Total Market Cap)';
-            const lineColor = mag7Mode ? '#1976d2' : '#667eea';
-            const fillColor = mag7Mode ? 'rgba(25, 118, 210, 0.1)' : 'rgba(102, 126, 234, 0.1)';
+            const fullValues = filteredData.map(entry => (entry.totalMarketCap || 0) / 1e12);
+            const mag7Values = filteredData.map(entry => (entry.mag7 || 0) / 1e12);
 
-            document.getElementById('indexChartTitle').textContent = mag7Mode
-                ? 'Magnificent 7 - Daily Market Cap'
-                : 'Tech Stack Index - Daily Market Cap';
+            document.getElementById('indexChartTitle').textContent = 'Tech Stack Index vs. Magnificent 7 - Daily Market Cap';
 
             if (indexChart) {
                 indexChart.destroy();
@@ -709,17 +704,31 @@
                 type: 'line',
                 data: {
                     labels: labels,
-                    datasets: [{
-                        label: datasetLabel,
-                        data: indexValues,
-                        borderColor: lineColor,
-                        backgroundColor: fillColor,
-                        tension: 0.4,
-                        fill: true,
-                        pointRadius: 3,
-                        pointHoverRadius: 6,
-                        borderWidth: 2
-                    }]
+                    datasets: [
+                        {
+                            label: 'Tech Stack Index',
+                            data: fullValues,
+                            borderColor: '#5b4bd6',
+                            backgroundColor: 'rgba(91, 75, 214, 0.12)',
+                            tension: 0.4,
+                            fill: true,
+                            pointRadius: 2,
+                            pointHoverRadius: 6,
+                            borderWidth: 2.5
+                        },
+                        {
+                            label: 'Magnificent 7',
+                            data: mag7Values,
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.08)',
+                            borderDash: [6, 4],
+                            tension: 0.4,
+                            fill: false,
+                            pointRadius: 2,
+                            pointHoverRadius: 6,
+                            borderWidth: 2.5
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
@@ -733,7 +742,7 @@
                             callbacks: {
                                 label: function(context) {
                                     const value = context.parsed.y;
-                                    return `$${value.toFixed(2)}T`;
+                                    return `${context.dataset.label}: $${value.toFixed(2)}T`;
                                 }
                             }
                         }
