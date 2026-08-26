@@ -14,3 +14,4 @@ build/
 historical_data.json
 .DS_Store
 *.log
+news_cache.json

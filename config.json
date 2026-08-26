@@ -6,6 +6,13 @@
   "scheduler": {
     "update_interval_minutes": 7.5
   },
+  "news": {
+    "enabled": true,
+    "days": 2,
+    "max_results": 3,
+    "search_depth": "basic",
+    "refresh_interval_minutes": 60
+  },
   "holdings": [
     {"ticker": "GOOGL", "shares": 4936, "costBasis": 965428},
     {"ticker": "AAPL", "shares": 1062, "costBasis": 48504}

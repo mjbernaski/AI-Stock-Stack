@@ -368,6 +368,112 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.15);
         }
 
+        .stock-card.has-news {
+            cursor: pointer;
+        }
+
+        .news-badge {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            min-width: 16px;
+            height: 16px;
+            padding: 0 4px;
+            border-radius: 8px;
+            background: #37474f;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 16px;
+            text-align: center;
+        }
+
+        .news-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .news-overlay.open {
+            display: flex;
+        }
+
+        .news-panel {
+            background: #fff;
+            border-radius: 8px;
+            width: min(640px, 92vw);
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
+        .news-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 4px;
+        }
+
+        .news-panel-title {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .news-panel-close {
+            background: none;
+            border: none;
+            font-size: 22px;
+            line-height: 1;
+            cursor: pointer;
+            color: #757575;
+        }
+
+        .news-panel-meta {
+            font-size: 12px;
+            color: #757575;
+            margin-bottom: 14px;
+        }
+
+        .news-item {
+            padding: 10px 0;
+            border-top: 1px solid #eee;
+        }
+
+        .news-item-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1565c0;
+            text-decoration: none;
+        }
+
+        .news-item-title:hover {
+            text-decoration: underline;
+        }
+
+        .news-item-source {
+            font-size: 11px;
+            color: #757575;
+            margin-top: 3px;
+        }
+
+        .news-item-snippet {
+            font-size: 12px;
+            color: #444;
+            margin-top: 5px;
+            line-height: 1.4;
+        }
+
+        .news-empty {
+            font-size: 13px;
+            color: #757575;
+            padding: 10px 0;
+        }
+
         .stock-header {
             display: flex;
             justify-content: space-between;
@@ -604,6 +710,10 @@
         <div id="content">
             <div class="loading pulse">Loading stock data...</div>
         </div>
+    </div>
+
+    <div class="news-overlay" id="newsOverlay">
+        <div class="news-panel" id="newsPanel"></div>
     </div>
 
     <script>
@@ -911,6 +1021,81 @@
             document.getElementById('layerRatioChartContainer').style.display = 'block';
         }
 
+        let newsByTicker = {};
+        let newsMeta = {};
+
+        async function fetchNews() {
+            try {
+                const response = await fetch('/api/news');
+                const data = await response.json();
+                newsByTicker = data.news || {};
+                newsMeta = data.meta || {};
+                if (currentStockData) {
+                    renderStocks(currentStockData);
+                }
+            } catch (error) {
+                console.error('Error fetching news:', error);
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text == null ? '' : text;
+            return div.innerHTML;
+        }
+
+        function formatNewsDate(value) {
+            if (!value) return '';
+            const date = new Date(value);
+            if (isNaN(date)) return '';
+            return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        }
+
+        function openNews(ticker) {
+            const entry = newsByTicker[ticker];
+            if (!entry) return;
+
+            const articles = entry.articles || [];
+            const windowDays = newsMeta.days;
+            let metaLine = windowDays ? `Last ${windowDays} day${windowDays === 1 ? '' : 's'}` : '';
+            if (entry.fetchedAt) {
+                metaLine += `${metaLine ? ' &middot; ' : ''}fetched ${new Date(entry.fetchedAt).toLocaleString()}`;
+            }
+            if (entry.error) {
+                metaLine += `${metaLine ? ' &middot; ' : ''}<span style="color:#c62828">${escapeHtml(entry.error)}</span>`;
+            }
+
+            const items = articles.length ? articles.map(article => `
+                <div class="news-item">
+                    <a class="news-item-title" href="${escapeHtml(article.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(article.title)}</a>
+                    <div class="news-item-source">${escapeHtml(article.source)}${article.publishedDate ? ' &middot; ' + escapeHtml(formatNewsDate(article.publishedDate)) : ''}</div>
+                    <div class="news-item-snippet">${escapeHtml(article.snippet)}</div>
+                </div>
+            `).join('') : '<div class="news-empty">No stories in this window.</div>';
+
+            document.getElementById('newsPanel').innerHTML = `
+                <div class="news-panel-header">
+                    <div class="news-panel-title">${escapeHtml(entry.ticker)} &mdash; ${escapeHtml(entry.name)}</div>
+                    <button class="news-panel-close" onclick="closeNews()" aria-label="Close">&times;</button>
+                </div>
+                <div class="news-panel-meta">${metaLine}</div>
+                ${items}
+            `;
+            document.getElementById('newsOverlay').classList.add('open');
+        }
+
+        function closeNews() {
+            document.getElementById('newsOverlay').classList.remove('open');
+        }
+
+        document.getElementById('newsOverlay').addEventListener('click', function(event) {
+            if (event.target === this) closeNews();
+        });
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') closeNews();
+        });
+
         async function fetchStocks() {
             try {
                 const response = await fetch('/api/stocks');
@@ -1118,8 +1303,15 @@
             const priceChangeSign = stock.priceChange > 0 ? '+$' : stock.priceChange < 0 ? '-$' : '$';
             const priceChangeAbs = Math.abs(stock.priceChange || 0).toFixed(2);
 
+            const newsEntry = newsByTicker[stock.ticker];
+            const newsCount = newsEntry && newsEntry.articles ? newsEntry.articles.length : 0;
+            const newsBadge = newsCount ? `<div class="news-badge">${newsCount}</div>` : '';
+            const newsClass = newsCount ? ' has-news' : '';
+            const newsClick = newsCount ? ` onclick="openNews('${stock.ticker}')"` : '';
+
             return `
-                <div class="stock-card">
+                <div class="stock-card${newsClass}"${newsClick}>
+                    ${newsBadge}
                     <div class="stock-header">
                         <div class="stock-info">
                             <div class="stock-ticker">${stock.ticker}</div>
@@ -1233,6 +1425,8 @@
         });
 
         initAutoUpdate().then(() => fetchStocks());
+        fetchNews();
+        setInterval(fetchNews, 15 * 60 * 1000);
     </script>
 </body>
 </html>

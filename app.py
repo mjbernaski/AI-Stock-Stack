@@ -7,6 +7,8 @@ from datetime import datetime, timezone, timedelta
 import threading
 import os
 
+import news
+
 app = Flask(__name__)
 CORS(app)
 
@@ -82,6 +84,10 @@ def is_market_open():
     market_open = now.replace(hour=9, minute=30, second=0, microsecond=0)
     market_close = now.replace(hour=16, minute=0, second=0, microsecond=0)
     return market_open <= now <= market_close
+
+def scheduled_news_fetch():
+    # News breaks outside market hours, so this runs regardless of is_market_open().
+    news.fetch_all_news(config)
 
 def scheduled_fetch():
     if not is_market_open():
@@ -384,10 +390,24 @@ def get_layer_ratios():
     with lock:
         return jsonify(layer_ratio_history)
 
+@app.route('/api/news')
+def get_news():
+    return jsonify(news.get_news())
+
+@app.route('/api/news/<ticker>')
+def get_news_for_ticker(ticker):
+    entry = news.get_news_for_ticker(ticker)
+    if entry is None:
+        return jsonify({'error': f'No news cached for {ticker.upper()}'}), 404
+    return jsonify(entry)
+
 if __name__ == '__main__':
     load_historical_data()
     fetch_stock_data()
     fetch_historical_layer_ratios()
+
+    news.load_news_cache()
+    threading.Thread(target=scheduled_news_fetch, daemon=True).start()
 
     scheduler = BackgroundScheduler()
     scheduler.add_job(
@@ -395,6 +415,12 @@ if __name__ == '__main__':
         trigger="interval",
         minutes=config['scheduler']['update_interval_minutes']
     )
+    if config.get('news', {}).get('enabled', True):
+        scheduler.add_job(
+            func=scheduled_news_fetch,
+            trigger="interval",
+            minutes=config['news']['refresh_interval_minutes']
+        )
     scheduler.start()
 
     try:
