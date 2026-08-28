@@ -14,6 +14,8 @@ from urllib.parse import urlparse
 
 import requests
 
+from storage import write_json_atomic
+
 NEWS_CACHE_FILE = 'news_cache.json'
 TAVILY_ENDPOINT = 'https://api.tavily.com/search'
 MAX_WORKERS = 4
@@ -69,8 +71,7 @@ def load_news_cache():
 
 def save_news_cache():
     try:
-        with open(NEWS_CACHE_FILE, 'w') as f:
-            json.dump({'meta': news_meta, 'news': news_data}, f, indent=2)
+        write_json_atomic(NEWS_CACHE_FILE, {'meta': news_meta, 'news': news_data})
     except Exception as e:
         print(f"Error saving news cache: {e}")
 

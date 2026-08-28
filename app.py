@@ -8,6 +8,7 @@ import threading
 import os
 
 import news
+from storage import write_json_atomic
 
 app = Flask(__name__)
 CORS(app)
@@ -41,8 +42,7 @@ def load_historical_data():
 
 def save_historical_data():
     try:
-        with open(HISTORY_FILE, 'w') as f:
-            json.dump(historical_data, f, indent=2)
+        write_json_atomic(HISTORY_FILE, historical_data)
     except Exception as e:
         print(f"Error saving historical data: {e}")
 
@@ -61,8 +61,7 @@ def load_layer_ratio_cache():
 
 def save_layer_ratio_cache():
     try:
-        with open(LAYER_RATIO_CACHE_FILE, 'w') as f:
-            json.dump(layer_ratio_history, f, indent=2)
+        write_json_atomic(LAYER_RATIO_CACHE_FILE, layer_ratio_history)
         print(f"Saved {len(layer_ratio_history)} layer ratio data points to cache")
     except Exception as e:
         print(f"Error saving layer ratio cache: {e}")
@@ -402,33 +401,50 @@ def get_news_for_ticker(ticker):
     return jsonify(entry)
 
 if __name__ == '__main__':
-    load_historical_data()
-    fetch_stock_data()
-    fetch_historical_layer_ratios()
+    USE_RELOADER = True
 
-    news.load_news_cache()
-    threading.Thread(target=scheduled_news_fetch, daemon=True).start()
-
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(
-        func=scheduled_fetch,
-        trigger="interval",
-        minutes=config['scheduler']['update_interval_minutes']
+    # Werkzeug's reloader runs this module in two processes: a supervisor that
+    # only watches files for changes, and the child it spawns to actually serve.
+    # Everything below is for the serving process alone. Unguarded, the
+    # supervisor also ran a full yfinance pull and a full (billed) Tavily fetch
+    # before the child even started, and then kept its own scheduler firing
+    # those same jobs on the interval forever, doubling every API call the app
+    # makes. The child sets WERKZEUG_RUN_MAIN; with the reloader off, this is
+    # the only process and does the work itself.
+    is_serving_process = (
+        not USE_RELOADER or os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
     )
-    if config.get('news', {}).get('enabled', True):
+
+    scheduler = None
+    if is_serving_process:
+        load_historical_data()
+        fetch_stock_data()
+        fetch_historical_layer_ratios()
+
+        news.load_news_cache()
+        threading.Thread(target=scheduled_news_fetch, daemon=True).start()
+
+        scheduler = BackgroundScheduler()
         scheduler.add_job(
-            func=scheduled_news_fetch,
+            func=scheduled_fetch,
             trigger="interval",
-            minutes=config['news']['refresh_interval_minutes']
+            minutes=config['scheduler']['update_interval_minutes']
         )
-    scheduler.start()
+        if config.get('news', {}).get('enabled', True):
+            scheduler.add_job(
+                func=scheduled_news_fetch,
+                trigger="interval",
+                minutes=config['news']['refresh_interval_minutes']
+            )
+        scheduler.start()
 
     try:
         app.run(
             host=config['server']['host'],
             port=config['server']['port'],
             debug=True,
-            use_reloader=True
+            use_reloader=USE_RELOADER
         )
     except (KeyboardInterrupt, SystemExit):
-        scheduler.shutdown()
+        if scheduler:
+            scheduler.shutdown()
