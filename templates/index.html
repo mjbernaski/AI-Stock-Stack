@@ -263,6 +263,103 @@
             position: relative;
         }
 
+        .layer-body {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+        }
+
+        /* min-width:0 lets the grid shrink instead of overflowing the flex row. */
+        .layer-main {
+            flex: 1;
+            min-width: 0;
+            position: relative;
+            padding-bottom: 32px;
+        }
+
+        .layer-news {
+            width: 260px;
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.75);
+            border-radius: 6px;
+            padding: 10px 12px;
+            /* Capped so a long news list can't stretch the layer into dead space. */
+            max-height: 320px;
+            overflow-y: auto;
+        }
+
+        .layer-news-title {
+            position: sticky;
+            top: 0;
+            background: inherit;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #607d8b;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(0,0,0,0.08);
+            margin-bottom: 4px;
+        }
+
+        .layer-news-item {
+            display: block;
+            padding: 7px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .layer-news-item:last-child {
+            border-bottom: none;
+        }
+
+        .layer-news-item:hover .layer-news-headline {
+            text-decoration: underline;
+        }
+
+        .layer-news-ticker {
+            display: inline-block;
+            font-size: 9px;
+            font-weight: 700;
+            color: #fff;
+            background: #546e7a;
+            border-radius: 3px;
+            padding: 1px 4px;
+            margin-right: 5px;
+            vertical-align: 1px;
+        }
+
+        .layer-news-headline {
+            font-size: 11.5px;
+            font-weight: 600;
+            color: #1a237e;
+            line-height: 1.35;
+        }
+
+        .layer-news-meta {
+            display: block;
+            font-size: 9.5px;
+            color: #90a4ae;
+            margin-top: 3px;
+        }
+
+        .layer-news-empty {
+            font-size: 11px;
+            color: #90a4ae;
+            padding: 8px 0;
+        }
+
+        @media (max-width: 900px) {
+            .layer-body {
+                flex-direction: column;
+            }
+
+            .layer-news {
+                width: auto;
+            }
+        }
+
         .layer-total {
             position: absolute;
             bottom: 12px;
@@ -1270,10 +1367,15 @@
                             ${layer.title}
                             ${layerIndexHtml}
                         </h2>
-                        <div class="stock-grid">
-                            ${stocks.map(stock => renderStockCard(stock)).join('')}
+                        <div class="layer-body">
+                            <div class="layer-main">
+                                <div class="stock-grid">
+                                    ${stocks.map(stock => renderStockCard(stock)).join('')}
+                                </div>
+                                ${layerTotalHtml}
+                            </div>
+                            ${renderLayerNews(stocks)}
                         </div>
-                        ${layerTotalHtml}
                     </div>
                 `;
 
@@ -1283,6 +1385,58 @@
             });
 
             content.innerHTML = html;
+        }
+
+        const LAYER_NEWS_LIMIT = 8;
+
+        // A story naming several companies in one layer arrives once per ticker;
+        // mirrors dedupe_key() in news.py so the sidebar shows it a single time.
+        function dedupeKey(title) {
+            return stripOutlet(title).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 50);
+        }
+
+        // Headlines carry an outlet suffix ("... - Reuters"); the source is shown
+        // separately, so strip it rather than repeating it in cramped space.
+        function stripOutlet(title) {
+            const cut = title.lastIndexOf(' - ');
+            return cut > 30 ? title.slice(0, cut) : title;
+        }
+
+        function renderLayerNews(stocks) {
+            const items = [];
+            stocks.forEach(stock => {
+                const entry = newsByTicker[stock.ticker];
+                if (!entry || !entry.articles) return;
+                entry.articles.forEach(article => items.push({ ticker: stock.ticker, article }));
+            });
+
+            items.sort((a, b) =>
+                new Date(b.article.publishedDate || 0) - new Date(a.article.publishedDate || 0));
+
+            const seen = new Set();
+            const unique = items.filter(({ article }) => {
+                const key = dedupeKey(article.title);
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+
+            const body = unique.length
+                ? unique.slice(0, LAYER_NEWS_LIMIT).map(({ ticker, article }) => `
+                    <a class="layer-news-item" href="${escapeHtml(article.url)}" target="_blank" rel="noopener noreferrer">
+                        <span class="layer-news-ticker">${escapeHtml(ticker)}</span>
+                        <span class="layer-news-headline">${escapeHtml(stripOutlet(article.title))}</span>
+                        <span class="layer-news-meta">${escapeHtml(article.source)}${article.publishedDate ? ' &middot; ' + escapeHtml(formatNewsDate(article.publishedDate)) : ''}</span>
+                    </a>
+                `).join('')
+                : '<div class="layer-news-empty">No recent stories.</div>';
+
+            return `
+                <aside class="layer-news">
+                    <div class="layer-news-title">Latest News</div>
+                    ${body}
+                </aside>
+            `;
         }
 
         function renderStockCard(stock) {
