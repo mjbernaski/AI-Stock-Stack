@@ -11,11 +11,13 @@
     "days": 2,
     "max_results": 3,
     "search_depth": "basic",
-    "refresh_interval_minutes": 60
+    "refresh_interval_minutes": 60,
+    "fallback_days": 7
   },
   "holdings": [
     {"ticker": "GOOGL", "shares": 4936, "costBasis": 965428},
-    {"ticker": "AAPL", "shares": 1062, "costBasis": 48504}
+    {"ticker": "AAPL", "shares": 1062, "costBasis": 48504},
+    {"ticker": "NVDA", "shares": 1552, "costBasis": 327922.08, "purchaseDate": "2026-08-26"}
   ],
   "stocks": {
     "layer0": [

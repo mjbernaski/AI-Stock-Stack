@@ -6,6 +6,7 @@ a lock, backed by a JSON file cache on disk so headlines survive a restart.
 
 import json
 import os
+import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -17,6 +18,29 @@ NEWS_CACHE_FILE = 'news_cache.json'
 TAVILY_ENDPOINT = 'https://api.tavily.com/search'
 MAX_WORKERS = 4
 REQUEST_TIMEOUT = 20
+
+# Tavily bills per search, not per result, so we over-fetch and then discard
+# stories that never actually mention the company. Without this, generic market
+# wraps and 13F-filing spam crowd out real coverage.
+OVERFETCH_MULTIPLIER = 3
+MAX_OVERFETCH = 12
+SNIPPET_LENGTH = 280
+
+# Quote pages, screeners and listing pages that Tavily's news index returns
+# alongside real reporting. They name the company but carry no story.
+NON_NEWS_TITLE = re.compile(
+    r'stock price today|quote & chart|quote, market cap|share price|'
+    r'latest stock news & headlines|stock price, quote|price today \(|'
+    r'live quote|stock option|– quote|\bquotes?\b.*\bchart\b',
+    re.IGNORECASE,
+)
+
+# Words too common across these company names to identify a story on their own.
+GENERIC_NAME_TOKENS = {
+    'inc', 'corp', 'corporation', 'holdings', 'company', 'group', 'international',
+    'technology', 'technologies', 'systems', 'networks', 'materials', 'research',
+    'services', 'energy', 'computer', 'micro', 'ltd', 'plc',
+}
 
 news_data = {}
 news_meta = {}
@@ -57,16 +81,68 @@ def source_from_url(url):
     except Exception:
         return ''
 
+def relevance_patterns(ticker, name):
+    """Patterns that indicate a story is actually about this company.
+
+    The ticker is matched case-sensitively so tickers that are ordinary words
+    (NOW, ARM) don't match prose; name tokens are matched case-insensitively.
+    """
+    patterns = [re.compile(rf'\b{re.escape(ticker)}\b')]
+    for token in name.split():
+        cleaned = token.strip('.,')
+        if len(cleaned) >= 3 and cleaned.lower() not in GENERIC_NAME_TOKENS:
+            patterns.append(re.compile(rf'\b{re.escape(cleaned)}\b', re.IGNORECASE))
+    return patterns
+
+def dedupe_key(title):
+    """Collapse the same story syndicated across editions.
+
+    Outlets re-run a wire story under a trimmed headline and a different
+    suffix ("- Yahoo Finance" vs "- Yahoo! Finance Canada"), so compare a
+    normalized prefix of the headline with the outlet suffix removed.
+    """
+    head = title.rsplit(' - ', 1)[0] if ' - ' in title else title
+    return re.sub(r'[^a-z0-9]', '', head.lower())[:50]
+
+def is_relevant(result, patterns):
+    """Require the company to be the subject of the headline.
+
+    Matching the body (or even the opening snippet) lets through institutional
+    -holdings filings that list dozens of tickers, so a story about an unrelated
+    company surfaces under half the portfolio. The headline is the subject test.
+    """
+    title = result.get('title', '')
+    if not title or NON_NEWS_TITLE.search(title):
+        return False
+    return any(p.search(title) for p in patterns)
+
+def search_tavily(query, days, wanted, settings, api_key):
+    """One Tavily news search. Raises on a non-200 so the caller can record it."""
+    response = requests.post(
+        TAVILY_ENDPOINT,
+        json={
+            'query': query,
+            'topic': 'news',
+            'days': days,
+            'max_results': min(wanted * OVERFETCH_MULTIPLIER, MAX_OVERFETCH),
+            'search_depth': settings['search_depth'],
+        },
+        headers={'Authorization': f'Bearer {api_key}'},
+        timeout=REQUEST_TIMEOUT,
+    )
+
+    if response.status_code != 200:
+        detail = response.json().get('detail', response.text)
+        if isinstance(detail, dict):
+            detail = detail.get('error', detail)
+        raise Exception(f"HTTP {response.status_code}: {detail}")
+
+    return response.json().get('results', [])
+
 def fetch_news_for_ticker(ticker, name, settings, api_key):
     """Return (ticker, entry). Never raises; failures come back on the entry."""
-    query = f"{name} ({ticker}) stock news"
-    payload = {
-        'query': query,
-        'topic': 'news',
-        'days': settings['days'],
-        'max_results': settings['max_results'],
-        'search_depth': settings['search_depth'],
-    }
+    wanted = settings['max_results']
+    query = f"{name} {ticker} stock"
 
     entry = {
         'ticker': ticker,
@@ -76,31 +152,51 @@ def fetch_news_for_ticker(ticker, name, settings, api_key):
     }
 
     try:
-        response = requests.post(
-            TAVILY_ENDPOINT,
-            json=payload,
-            headers={'Authorization': f'Bearer {api_key}'},
-            timeout=REQUEST_TIMEOUT,
-        )
+        patterns = relevance_patterns(ticker, name)
+        min_score = settings.get('min_score', 0)
+        days = settings['days']
 
-        if response.status_code != 200:
-            detail = response.json().get('detail', response.text)
-            if isinstance(detail, dict):
-                detail = detail.get('error', detail)
-            raise Exception(f"HTTP {response.status_code}: {detail}")
+        def keepers(results):
+            seen = set()
+            out = []
+            for r in results:
+                if not is_relevant(r, patterns) or (r.get('score') or 0) < min_score:
+                    continue
+                # Syndicated stories repeat across outlets under the same headline.
+                key = dedupe_key(r.get('title') or '')
+                if key in seen:
+                    continue
+                seen.add(key)
+                out.append(r)
+            return out
 
-        for result in response.json().get('results', []):
+        results = search_tavily(query, days, wanted, settings, api_key)
+        kept = keepers(results)
+
+        # Thinly-covered names can have no on-topic story in the normal window;
+        # widen it once rather than showing an empty card.
+        fallback_days = settings.get('fallback_days')
+        if not kept and fallback_days and fallback_days > days:
+            results = search_tavily(query, fallback_days, wanted, settings, api_key)
+            kept = keepers(results)
+            if kept:
+                entry['windowDays'] = fallback_days
+
+        entry['discardedCount'] = len(results) - len(kept)
+
+        for result in kept[:wanted]:
             url = result.get('url', '')
             entry['articles'].append({
                 'title': result.get('title', ''),
                 'url': url,
                 'source': source_from_url(url),
                 'publishedDate': result.get('published_date'),
-                'snippet': (result.get('content') or '')[:280],
+                'snippet': (result.get('content') or '')[:SNIPPET_LENGTH],
                 'score': result.get('score'),
             })
 
-        print(f"  {ticker}: {len(entry['articles'])} stories")
+        print(f"  {ticker}: {len(entry['articles'])} stories "
+              f"({entry['discardedCount']} off-topic discarded)")
 
     except Exception as e:
         entry['error'] = str(e)
